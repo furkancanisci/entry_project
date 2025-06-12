@@ -678,39 +678,31 @@ class ShopListView(APIView):
     def get(self, request, user_id):
         try:
             user = User.objects.get(id=user_id)
-            customer_id = user.customer_id
 
-            if not customer_id:
-                 return Response(
-                    {"error": "Kullanıcının customer_id bilgisi mevcut değil."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            shops = Shop.objects.filter(customer_id=customer_id).values('id', 'name') # Sadece id ve name yeterliyse böyle alabilirsiniz
-            # Veya tam Shop objelerini almak için:
-            # shops = Shop.objects.filter(customer_id=customer_id)
-            # serializer = ShopSerializer(shops, many=True) # Serializer kullanın
+            # Süper kullanıcı kontrolü
+            if user.is_superuser:
+                # Süper kullanıcı ise tüm mağazaları listele
+                shops = Shop.objects.all().values('id', 'name')
+            else:
+                # Süper kullanıcı değilse customer_id kontrolü yap
+                customer_id = user.customer_id
+                if not customer_id:
+                    return Response(
+                        {"error": "Kullanıcının customer_id bilgisi mevcut değil."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                shops = Shop.objects.filter(customer_id=customer_id).values('id', 'name')
 
             if not shops.exists():
-                # Boş liste döndürmek de bir seçenek olabilir, 404 yerine 200 boş listeyle
-                 return Response([], status=status.HTTP_200_OK)
-                 # Veya hata döndürün:
-                 # return Response(
-                 #     {"error": "Kullanıcının bağlı olduğu mağaza bulunamadı."},
-                 #     status=status.HTTP_404_NOT_FOUND,
-                 # )
+                return Response([], status=status.HTTP_200_OK)
 
-            # Eğer values() kullandıysanız:
             return Response(list(shops), status=status.HTTP_200_OK)
-            # Eğer Serializer kullandıysanız:
-            # return Response(serializer.data, status=status.HTTP_200_OK)
-
 
         except User.DoesNotExist:
             return Response({"error": "Kullanıcı bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        
 
 class AddDeviceView(APIView):
     def post(self, request):
