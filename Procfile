@@ -1,0 +1,1 @@
+web: gunicorn entryproject.wsgi

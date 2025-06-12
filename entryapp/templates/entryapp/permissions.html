@@ -1,0 +1,70 @@
+{% extends 'entryapp/base.html' %}
+{% load static %}
+
+{% block title %}Kullanıcı İzinleri - Giriş-Çıkış Takip Sistemi{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Kullanıcı İzinleri</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Kullanıcı</th>
+                            <th>Mağaza Yönetimi</th>
+                            <th>Cihaz Yönetimi</th>
+                            <th>İstatistikleri Görüntüleme</th>
+                            <th>Kullanıcı Yönetimi</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <form method="post" action="{% url 'update_permissions' user.id %}">
+                                {% csrf_token %}
+                                <td>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="can_manage_shops" 
+                                               {% if user.permissions.can_manage_shops %}checked{% endif %}>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="can_manage_devices" 
+                                               {% if user.permissions.can_manage_devices %}checked{% endif %}>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="can_view_statistics" 
+                                               {% if user.permissions.can_view_statistics %}checked{% endif %}>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="can_manage_users" 
+                                               {% if user.permissions.can_manage_users %}checked{% endif %}>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+                                </td>
+                            </form>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Henüz kullanıcı bulunmuyor.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

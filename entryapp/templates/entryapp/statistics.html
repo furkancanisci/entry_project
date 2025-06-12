@@ -1,0 +1,144 @@
+{% extends 'entryapp/base.html' %}
+{% load static %}
+
+{% block title %}İstatistikler - Giriş-Çıkış Takip Sistemi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Grafik -->
+        <div class="col-12 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Günlük Giriş-Çıkış Sayıları</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detaylı Kayıtlar -->
+        <div class="col-12 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Detaylı Kayıtlar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Mağaza</th>
+                                    <th>Cihaz</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsList">
+                                <!-- Kayıtlar JavaScript ile doldurulacak -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userId = "{{ request.user.id }}";
+    let dailyChart;
+
+    // Günlük verileri yükle
+    function loadDailyData() {
+        fetch(`/api/shops/${userId}/daily-data/`)
+            .then(response => response.json())
+            .then(data => {
+                updateChart(data);
+                updateRecords(data.records);
+            })
+            .catch(error => console.error('Veri yüklenirken hata oluştu:', error));
+    }
+
+    // Grafiği güncelle
+    function updateChart(data) {
+        const ctx = document.getElementById('dailyChart').getContext('2d');
+        
+        if (dailyChart) {
+            dailyChart.destroy();
+        }
+
+        dailyChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.dates,
+                datasets: [
+                    {
+                        label: 'Giriş',
+                        data: data.entry_counts,
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Çıkış',
+                        data: data.exit_counts,
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Kayıtları güncelle
+    function updateRecords(records) {
+        const recordsList = document.getElementById('recordsList');
+        recordsList.innerHTML = '';
+
+        if (records.length > 0) {
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.date}</td>
+                    <td>${record.shop_name}</td>
+                    <td>${record.device_name || '-'}</td>
+                    <td>
+                        <span class="badge ${record.is_entry ? 'bg-success' : 'bg-danger'}">
+                            ${record.is_entry ? 'Giriş' : 'Çıkış'}
+                        </span>
+                    </td>
+                `;
+                recordsList.appendChild(row);
+            });
+        } else {
+            recordsList.innerHTML = '<tr><td colspan="4" class="text-center">Henüz kayıt bulunmuyor.</td></tr>';
+        }
+    }
+
+    // Sayfa yüklendiğinde verileri yükle
+    loadDailyData();
+
+    // Her 30 saniyede bir verileri güncelle
+    setInterval(loadDailyData, 30000);
+});
+</script>
+{% endblock %} 

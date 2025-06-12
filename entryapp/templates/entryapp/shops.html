@@ -1,0 +1,140 @@
+{% extends 'entryapp/base.html' %}
+{% load static %}
+
+{% block title %}Mağazalar - Entry App{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Mağazalar</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addShopModal">
+            <i class="bi bi-plus-circle"></i> Yeni Mağaza Ekle
+        </button>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Mağaza Adı</th>
+                                    <th>Adres</th>
+                                    <th>Telefon</th>
+                                    <th>E-posta</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for shop in shops %}
+                                <tr>
+                                    <td>{{ shop.id }}</td>
+                                    <td>{{ shop.name }}</td>
+                                    <td>{{ shop.address }}</td>
+                                    <td>{{ shop.phone }}</td>
+                                    <td>{{ shop.email }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editShopModal{{ shop.id }}">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <form method="post" action="{% url 'delete_shop' shop.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Bu mağazayı silmek istediğinizden emin misiniz?')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">Henüz mağaza bulunmuyor.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Yeni Mağaza Ekleme Modal -->
+<div class="modal fade" id="addShopModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Yeni Mağaza Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'add_shop' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Mağaza Adı</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Adres</label>
+                        <textarea class="form-control" id="address" name="address" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Telefon</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">E-posta</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Mağaza Düzenleme Modal -->
+{% for shop in shops %}
+<div class="modal fade" id="editShopModal{{ shop.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Mağaza Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'update_shop' shop.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_name{{ shop.id }}" class="form-label">Mağaza Adı</label>
+                        <input type="text" class="form-control" id="edit_name{{ shop.id }}" name="name" value="{{ shop.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_address{{ shop.id }}" class="form-label">Adres</label>
+                        <textarea class="form-control" id="edit_address{{ shop.id }}" name="address" required>{{ shop.address }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_phone{{ shop.id }}" class="form-label">Telefon</label>
+                        <input type="tel" class="form-control" id="edit_phone{{ shop.id }}" name="phone" value="{{ shop.phone }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_email{{ shop.id }}" class="form-label">E-posta</label>
+                        <input type="email" class="form-control" id="edit_email{{ shop.id }}" name="email" value="{{ shop.email }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Güncelle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %} 

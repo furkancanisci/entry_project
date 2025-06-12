@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: entryproject-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn entryproject.wsgi
+    envVars:
+      - key: DEBUG
+        value: "False"

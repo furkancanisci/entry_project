@@ -1,0 +1,87 @@
+{% extends 'entryapp/base.html' %}
+{% load static %}
+
+{% block title %}Ana Sayfa - Giriş-Çıkış Takip Sistemi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Özet Kartları -->
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Toplam Mağaza</h5>
+                    <h2 class="card-text text-primary">{{ shops|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Toplam Cihaz</h5>
+                    <h2 class="card-text text-primary">{{ devices|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Toplam Kullanıcı</h5>
+                    <h2 class="card-text text-primary">{{ users|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Son 24 Saat</h5>
+                    <h2 class="card-text text-primary">{{ records|length }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Son Kayıtlar -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Son Kayıtlar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Mağaza</th>
+                                    <th>Cihaz</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                <tr>
+                                    <td>{{ record.created_at }}</td>
+                                    <td>{{ record.shop_name }}</td>
+                                    <td>{{ record.device_name }}</td>
+                                    <td>
+                                        <span class="badge {% if record.is_entry %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ record.is_entry|yesno:"Giriş,Çıkış" }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">Henüz kayıt bulunmuyor.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

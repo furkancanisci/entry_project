@@ -1,0 +1,35 @@
+{% extends 'entryapp/base.html' %}
+
+{% block title %}Kayıtlar{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Giriş-Çıkış Kayıtları</h2>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Kullanıcı</th>
+                        <th>Mağaza</th>
+                        <th>Cihaz</th>
+                        <th>İşlem</th>
+                        <th>Tarih</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                    <tr>
+                        <td>{{ record.user.username }}</td>
+                        <td>{{ record.shop.name }}</td>
+                        <td>{{ record.device.name }}</td>
+                        <td>{{ record.get_entry_exit_display }}</td>
+                        <td>{{ record.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %} 

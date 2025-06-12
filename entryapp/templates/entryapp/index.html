@@ -1,0 +1,171 @@
+{% extends 'entryapp/base.html' %}
+{% load static %}
+
+{% block title %}Ana Sayfa - Giriş-Çıkış Takip Sistemi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Widgets -->
+    <div class="row mb-4">
+        <!-- Toplam Cihaz -->
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Toplam Cihaz</h6>
+                            <h3 class="mb-0" id="totalDevices">0</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-device-hdd text-primary fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toplam Kullanıcı -->
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Toplam Kullanıcı</h6>
+                            <h3 class="mb-0" id="totalUsers">0</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-people text-success fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toplam Mağaza -->
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Toplam Mağaza</h6>
+                            <h3 class="mb-0" id="totalShops">0</h3>
+                        </div>
+                        <div class="bg-info bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-shop text-info fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Günlük Giriş-Çıkış -->
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Günlük Giriş-Çıkış</h6>
+                            <h3 class="mb-0" id="dailyEntries">0</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-arrow-left-right text-warning fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Son Kayıtlar -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Son Kayıtlar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Mağaza</th>
+                                    <th>Cihaz</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentRecordsList">
+                                <!-- Kayıtlar JavaScript ile doldurulacak -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userId = "{{ request.user.id }}";
+
+    // Son kayıtları yükle
+    function loadRecentRecords() {
+        fetch(`/api/shops/${userId}/recent-records/`)
+            .then(response => response.json())
+            .then(data => {
+                updateRecentRecords(data.records);
+            })
+            .catch(error => console.error('Veri yüklenirken hata oluştu:', error));
+    }
+
+    // İstatistikleri yükle
+    function loadStatistics() {
+        fetch(`/api/shops/${userId}/statistics/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('totalDevices').textContent = data.total_devices;
+                document.getElementById('totalUsers').textContent = data.total_users;
+                document.getElementById('totalShops').textContent = data.total_shops;
+                document.getElementById('dailyEntries').textContent = data.daily_entries;
+            })
+            .catch(error => console.error('İstatistikler yüklenirken hata oluştu:', error));
+    }
+
+    // Son kayıtları güncelle
+    function updateRecentRecords(records) {
+        const recordsList = document.getElementById('recentRecordsList');
+        recordsList.innerHTML = '';
+
+        if (records && records.length > 0) {
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.date}</td>
+                    <td>${record.shop_name}</td>
+                    <td>${record.device_name || '-'}</td>
+                    <td>
+                        <span class="badge ${record.is_entry ? 'bg-success' : 'bg-danger'}">
+                            ${record.is_entry ? 'Giriş' : 'Çıkış'}
+                        </span>
+                    </td>
+                `;
+                recordsList.appendChild(row);
+            });
+        } else {
+            recordsList.innerHTML = '<tr><td colspan="4" class="text-center">Henüz kayıt bulunmuyor.</td></tr>';
+        }
+    }
+
+    // Sayfa yüklendiğinde verileri yükle
+    loadRecentRecords();
+    loadStatistics();
+
+    // Her 30 saniyede bir verileri güncelle
+    setInterval(loadRecentRecords, 30000);
+    setInterval(loadStatistics, 30000);
+});
+</script>
+{% endblock %} 
