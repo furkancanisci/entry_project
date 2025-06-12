@@ -3,7 +3,11 @@ services:
     name: entryproject-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn entryproject.wsgi
+    startCommand: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn entryproject.wsgi --bind 0.0.0.0:10000"
     envVars:
       - key: DEBUG
         value: "False"
+      - key: DATABASE_URL
+        value: "postgresql://postgres:135720entry@db.zryxbvtlfdigbsalhtpt.supabase.co:5432/postgres"
