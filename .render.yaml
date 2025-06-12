@@ -11,3 +11,4 @@ services:
         value: "False"
       - key: DATABASE_URL
         value: "postgresql://postgres:135720entry@db.zryxbvtlfdigbsalhtpt.supabase.co:5432/postgres"
+    postDeployCommand: python manage.py migrate
