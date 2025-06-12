@@ -426,61 +426,70 @@ from .serializers import EntryExitRecordSerializer
 class HourlyDataView(APIView):
     def get(self, request, user_id, start_hour, end_hour):
         try:
-            # Kullanıcıyı ve customer_id'sini getir
+            # Get user
             user = User.objects.get(id=user_id)
-            customer_id = user.customer_id
-            if not customer_id:
-                return Response(
-                    {"error": "Kullanıcının customer_id bilgisi mevcut değil."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # SwiftUI'den gelen shop_id sorgu parametresini al
+            
+            # Get shop_id from query parameters
             shop_id = request.query_params.get("shop_id")
             if not shop_id:
-                 return Response(
+                return Response(
                     {"error": "Hangi mağazanın verisi istendiği belirtilmedi (shop_id eksik)."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             
-            # shop_id query parameter'dan string gelebilir, integer'a çevirelim ve hata kontrolü yapalım
+            # Convert shop_id to integer
             try:
                 shop_id = int(shop_id)
             except ValueError:
-                 return Response(
+                return Response(
                     {"error": "Geçersiz shop_id formatı."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Kullanıcının müşterisine ait ve ID'si eşleşen mağazayı bul
-            # Bu kontrol, kullanıcının rastgele bir shop_id gönderip başka bir müşterinin mağaza verisini çekmesini engeller.
-            try:
-                shop = Shop.objects.get(id=shop_id, customer_id=customer_id) # <-- Burası düzeltildi! customer_id kullanılıyor.
-            except Shop.DoesNotExist:
-                 return Response(
-                    {"error": "Belirtilen mağaza bulunamadı veya bu kullanıcıya ait değil."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+            # Check if superuser or has customer_id
+            if user.is_superuser:
+                # Superuser can access any shop
+                try:
+                    shop = Shop.objects.get(id=shop_id)
+                except Shop.DoesNotExist:
+                    return Response(
+                        {"error": "Belirtilen mağaza bulunamadı."},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+            else:
+                # Regular user needs customer_id check
+                if not user.customer_id:
+                    return Response(
+                        {"error": "Kullanıcının customer_id bilgisi mevcut değil."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                try:
+                    shop = Shop.objects.get(id=shop_id, customer_id=user.customer_id)
+                except Shop.DoesNotExist:
+                    return Response(
+                        {"error": "Belirtilen mağaza bulunamadı veya bu kullanıcıya ait değil."},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
             
-            # Bugünün tarihini al
-            today = timezone.now().date()
-            
-            # Saat aralığını kontrol et
+            # Validate hour range
             if not (0 <= start_hour <= 23 and 0 <= end_hour <= 23):
                 return Response({"error": "Geçersiz saat aralığı."}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Saat aralığını düzenle (başlangıç saati bitiş saatinden büyükse yer değiştir)
+            # Swap hours if start is greater than end
             if start_hour > end_hour:
                 start_hour, end_hour = end_hour, start_hour
             
-            # Saatlik verileri al
+            # Get today's date
+            today = timezone.now().date()
+            
+            # Calculate hourly data
             hourly_data = {}
             for hour in range(start_hour, end_hour + 1):
                 start_time = make_aware(datetime.combine(today, time(hour=hour)))
                 end_time = make_aware(datetime.combine(today, time(hour=hour, minute=59, second=59)))
                 
                 records = EntryExitRecord.objects.filter(
-                    shop=shop, # Belirtilen mağazaya göre filtrele
+                    shop=shop,
                     created_at__range=[start_time, end_time]
                 )
                 
@@ -492,23 +501,22 @@ class HourlyDataView(APIView):
                     'exit_count': exit_count
                 }
             
-            # Saatleri ve sayıları ayrı listelere ayır
+            # Prepare response data
             hours = list(range(start_hour, end_hour + 1))
             entry_counts = [hourly_data[hour]['entry_count'] for hour in hours]
             exit_counts = [hourly_data[hour]['exit_count'] for hour in hours]
             
-            # Response'u döndür
             return Response({
                 'hours': hours,
                 'entry_counts': entry_counts,
                 'exit_counts': exit_counts
-            }, status=status.HTTP_200_OK) # Başarılı yanıt kodu ekledik
+            }, status=status.HTTP_200_OK)
             
         except User.DoesNotExist:
             return Response({"error": "Kullanıcı bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
-        # Shop.DoesNotExist hatası artık yukarıdaki try/except içinde ele alınıyor
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @login_required
 def home(request):
@@ -563,24 +571,30 @@ from .models import User, Shop, EntryExitRecord
 class DailyRecordView(APIView):
     def get(self, request, user_id):
         try:
-            # Kullanıcıyı getir, artık user.shop_id yerine customer_id kullanıyoruz.
+            # Kullanıcıyı getir
             user = User.objects.get(id=user_id)
-            customer_id = user.customer_id
-            if not customer_id:
-                return Response(
-                    {"error": "Kullanıcının customer_id bilgisi mevcut değil."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
             
-            # Kullanıcının bağlı olduğu customer_id'ye ait tüm mağazaları getir.
-            shops = Shop.objects.filter(customer_id=customer_id)
+            # Süper kullanıcı kontrolü
+            if user.is_superuser:
+                # Süper kullanıcı ise tüm mağazalar
+                shops = Shop.objects.all()
+            else:
+                # Normal kullanıcı ise customer_id kontrolü
+                customer_id = user.customer_id
+                if not customer_id:
+                    return Response(
+                        {"error": "Kullanıcının customer_id bilgisi mevcut değil."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                shops = Shop.objects.filter(customer_id=customer_id)
+            
             if not shops.exists():
                 return Response(
-                    {"error": "Kullanıcının bağlı olduğu mağaza bulunamadı."},
+                    {"error": "Mağaza bulunamadı."},
                     status=status.HTTP_404_NOT_FOUND,
                 )
             
-            # SwiftUI select box'tan gönderilen shop_id varsa seçimi uygula, yoksa varsayılan olarak ilkini al.
+            # SwiftUI select box'tan gönderilen shop_id varsa seçimi uygula, yoksa varsayılan olarak ilkini al
             shop_id = request.query_params.get("shop_id")
             if shop_id:
                 shop = shops.filter(id=shop_id).first()
@@ -626,7 +640,7 @@ class DailyRecordView(APIView):
                     'is_entry': record.is_entry
                 })
             
-            # Gruplanmış tarih bilgilerini ayrı listelere aktar ve tarihler en yeni olandan eskiye doğru sıralansın
+            # Gruplanmış tarih bilgilerini ayrı listelere aktar
             dates = []
             entry_counts = []
             exit_counts = []
@@ -649,7 +663,6 @@ class DailyRecordView(APIView):
             return Response({"error": "Kullanıcı bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 # views.py
 
 from rest_framework.views import APIView
