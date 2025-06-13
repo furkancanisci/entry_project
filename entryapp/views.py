@@ -1219,15 +1219,20 @@ class RecentRecordsView(APIView):
     def get(self, request, user_id):
         try:
             user = User.objects.get(id=user_id)
-            if not user.customer_id:
-                return Response({'records': []}, status=status.HTTP_200_OK)
-                
-            shop = Shop.objects.get(customer_id=user.customer_id)           
+            
+            # Get recent records based on user type
             if user.is_superuser:
+                # Superuser can see all records without customer_id check
                 records = EntryExitRecord.objects.all().order_by('-created_at')[:10]
             else:
-                records = EntryExitRecord.objects.filter(shop__customer_id=user.customer_id).order_by('-created_at')[:10]
+                # Regular user needs customer_id check
+                if not user.customer_id:
+                    return Response({'records': []}, status=status.HTTP_200_OK)
+                records = EntryExitRecord.objects.filter(
+                    shop__customer_id=user.customer_id
+                ).order_by('-created_at')[:10]
             
+            # Format records data
             records_data = []
             for record in records:
                 records_data.append({
@@ -1238,10 +1243,9 @@ class RecentRecordsView(APIView):
                 })
             
             return Response({'records': records_data}, status=status.HTTP_200_OK)
+            
         except User.DoesNotExist:
             return Response({'error': 'Kullanıcı bulunamadı.'}, status=status.HTTP_404_NOT_FOUND)
-        except Shop.DoesNotExist:
-            return Response({'error': 'Mağaza bulunamadı.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
