@@ -69,22 +69,18 @@ from django.db import models
 
 
 class EntryExitRecord(models.Model):
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='records')
-    device = models.ForeignKey(Device, on_delete=models.SET_NULL, null=True, blank=True, related_name='records')
-    is_entry = models.BooleanField(default=True)
-    is_exit = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    is_entry = models.BooleanField()
+    is_exit = models.BooleanField()
+    created_at = models.DateTimeField()
+    rssi = models.IntegerField(null=True, blank=True)  # Added new field
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.shop.name} - {'Giriş' if self.is_entry else 'Çıkış'} - {self.created_at}"
-
-    @property
-    def shop_name(self):
-        return self.shop.name
-
-    @property
-    def device_name(self):
-        return self.device.name if self.device else 'Bilinmiyor'
+        return f"{self.shop.name} - {'Entry' if self.is_entry else 'Exit'} at {self.created_at}"
 
 class UserPermission(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='permissions')
