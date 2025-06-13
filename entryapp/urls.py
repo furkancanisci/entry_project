@@ -11,6 +11,8 @@ from .views import (
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from django.contrib.auth.views import LogoutView
+from django.urls import path
+from .views import delete_all_records
 
 router = DefaultRouter()
 router.register(r'shops', ShopViewSet, basename='shop')
@@ -23,7 +25,8 @@ urlpatterns = [
     path('login/', login_view, name='login'),
     path('register/', RegisterView.as_view(), name='register'),  # RegisterView sınıfını kullanıyoruz
     path('logout/', logout_view, name='logout'),
-    
+    path('delete-all-records/', delete_all_records, name='delete_all_records'),
+
     # Ana sayfalar
     path('home/', home_view, name='home'),
     path('shops/', shops_view, name='shops'),

@@ -1383,3 +1383,40 @@ class APILoginView(APIView):
                 {"error": "Geçersiz kullanıcı adı veya şifre."},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+        
+
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from .models import EntryExitRecord
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_all_records(request):
+    try:
+        if request.user.is_superuser:
+            # Süper kullanıcı tüm kayıtları silebilir
+            deleted_count = EntryExitRecord.objects.all().delete()[0]
+        else:
+            # Normal kullanıcı sadece kendi customer_id'sine ait kayıtları silebilir
+            if request.user.customer_id:
+                deleted_count = EntryExitRecord.objects.filter(
+                    shop__customer_id=request.user.customer_id
+                ).delete()[0]
+            else:
+                messages.error(request, 'Kayıtları silmek için yetkiniz bulunmuyor.')
+                return redirect('profile')
+
+        messages.success(
+            request, 
+            f'{deleted_count} giriş/çıkış kaydı başarıyla silindi.'
+        )
+    except Exception as e:
+        messages.error(
+            request, 
+            f'Kayıtlar silinirken bir hata oluştu: {str(e)}'
+        )
+    
+    return redirect('profile')
