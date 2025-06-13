@@ -54,7 +54,7 @@ urlpatterns = [
     path('api/users/filtered/<int:user_id>/', FilteredUserListView.as_view(), name='filtered_user_list'),
     path('api/devices/add/', AddDeviceView.as_view(), name='add_device'),
     path('api/records/add/', AddEntryExitRecordView.as_view(), name='add_record'),
-    path('api/device-records/', DeviceEntryExitAPIView.as_view(), name='device-records'),
+    path('api/entry-exit-record/', DeviceEntryExitAPIView.as_view(), name='device-records'),
 ]
 
 urlpatterns += router.urls

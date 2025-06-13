@@ -1272,36 +1272,61 @@ class DeviceEntryExitAPIView(APIView):
 
             created_records = []
             for record in data:
+                # Validate required fields
+                required_fields = ['shopid', 'deviceid', 'isentry', 'isexit', 'rssi', 'created_at']
+                if not all(field in record for field in required_fields):
+                    return Response(
+                        {"error": f"Missing required fields. Required: {required_fields}"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
                 try:
-                    shop = Shop.objects.get(id=record['shopid'])
-                    device = Device.objects.get(id=record['deviceid'])
-                    
-               
-                    
+                    # Convert shopid and deviceid to integers
+                    shop_id = int(record['shopid'])
+                    device_id = int(record['deviceid'])
+
+                    shop = Shop.objects.get(id=shop_id)
+                    device = Device.objects.get(id=device_id)
+
+                    # Parse created_at string to datetime
+                    try:
+                        created_at = datetime.strptime(record['created_at'], "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        return Response(
+                            {"error": f"Invalid datetime format for created_at. Use YYYY-MM-DD HH:MM:SS"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
                     entry_record = EntryExitRecord.objects.create(
                         shop=shop,
                         device=device,
-                        is_entry=record.get('isentry', False),
-                        is_exit=record.get('isexit', False),
-                        created_at=record.get('created_at')
+                        is_entry=bool(record['isentry']),
+                        is_exit=bool(record['isexit']),
+                        rssi=int(record['rssi']),
+                        created_at=created_at
                     )
                     created_records.append(entry_record)
-                except Shop.DoesNotExist:
+
+                except (Shop.DoesNotExist, Device.DoesNotExist) as e:
                     return Response(
-                        {"error": f"Shop with id {record['shopid']} does not exist"},
+                        {"error": f"Shop or Device not found: {str(e)}"},
                         status=status.HTTP_404_NOT_FOUND
                     )
-              
+                except ValueError as e:
+                    return Response(
+                        {"error": f"Invalid data format: {str(e)}"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
             serializer = EntryExitRecordSerializer(created_records, many=True)
             return Response({
-                "message": f"{len(created_records)} kayıt başarıyla eklendi.",
+                "message": f"{len(created_records)} records successfully added.",
                 "records": serializer.data
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response(
-                {"error": str(e)},
+                {"error": f"An unexpected error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
