@@ -1214,6 +1214,11 @@ class IndexView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         return context
+    
+
+def privacy_policy_view(request):
+    return render(request, 'entryapp/privacy_policy.html')
+
 
 class RecentRecordsView(APIView):
     def get(self, request, user_id):

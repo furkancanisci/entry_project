@@ -5,8 +5,9 @@ from .views import (
     users_view, profile_view, ShopViewSet, DeviceViewSet, EntryExitRecordViewSet,
     HourlyDataView, DailyRecordView, add_shop, update_shop, delete_shop,
     add_device, update_device, delete_device, support_view, permissions_view, update_permissions,
-    IndexView, RecentRecordsView, StatisticsView, RegisterView, logout_view, records_view,
-    DeviceEntryExitAPIView, APILoginView
+    IndexView, RecentRecordsView, StatisticsView, RegisterView, logout_view, records_view, privacy_policy_view,
+    DeviceEntryExitAPIView, APILoginView,
+    privacy_policy_view, delete_all_records
 )
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
@@ -29,6 +30,7 @@ urlpatterns = [
 
     # Ana sayfalar
     path('home/', IndexView.as_view(), name='home'),
+    path('privacy-policy/', privacy_policy_view, name='home'),
     path('shops/', shops_view, name='shops'),
     path('devices/', devices_view, name='devices'),
     path('statistics/', statistics_view, name='statistics'),
