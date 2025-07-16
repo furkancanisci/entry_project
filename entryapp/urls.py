@@ -28,6 +28,7 @@ urlpatterns = [
     path('delete-all-records/', delete_all_records, name='delete_all_records'),
 
     # Ana sayfalar
+    path('home/', home_view, name='home'),
     path('shops/', shops_view, name='shops'),
     path('devices/', devices_view, name='devices'),
     path('statistics/', statistics_view, name='statistics'),
