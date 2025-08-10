@@ -606,10 +606,11 @@ class DailyRecordView(APIView):
             else:
                 shop = shops.first()
             
-            # Son 7 günün kayıtlarını almak için tarih aralığını belirle
-            end_date = timezone.now()
-            start_date = end_date - timedelta(days=7)
-            
+            # Sadece bugüne ait kayıtları almak için tarih aralığını belirle
+            today = timezone.now().date()
+            start_date = timezone.make_aware(datetime.combine(today, time.min))
+            end_date = timezone.make_aware(datetime.combine(today, time.max))
+        
             records = EntryExitRecord.objects.filter(
                 shop=shop,
                 created_at__range=[start_date, end_date]
@@ -640,29 +641,26 @@ class DailyRecordView(APIView):
                     'is_entry': record.is_entry
                 })
             
-            # Gruplanmış tarih bilgilerini ayrı listelere aktar
-            dates = []
-            entry_counts = []
-            exit_counts = []
-            all_records = []
-            
-            for date_str, data in sorted(daily_data.items(), key=lambda x: x[0], reverse=True):
-                dates.append(date_str)
-                entry_counts.append(data['entry_count'])
-                exit_counts.append(data['exit_count'])
-                all_records.extend(data['records'])
-            
+            # Günlük veriyi hazırla (sadece bugün)
+            today_data = daily_data.get(today.strftime('%Y-%m-%d'), {
+                'entry_count': 0,
+                'exit_count': 0,
+                'records': []
+            })
+        
             return Response({
-                'dates': dates,
-                'entry_counts': entry_counts,
-                'exit_counts': exit_counts,
-                'records': all_records
+                'date': today.strftime('%Y-%m-%d'),
+                'entry_count': today_data['entry_count'],
+                'exit_count': today_data['exit_count'],
+                'records': today_data['records']
             }, status=status.HTTP_200_OK)
         
         except User.DoesNotExist:
             return Response({"error": "Kullanıcı bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # views.py
 
 from rest_framework.views import APIView
