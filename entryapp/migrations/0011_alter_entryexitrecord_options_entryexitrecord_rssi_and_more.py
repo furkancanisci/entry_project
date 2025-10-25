@@ -2,6 +2,34 @@
 
 import django.db.models.deletion
 from django.db import migrations, models
+from django.core.exceptions import FieldDoesNotExist
+from django.db import connection
+
+def add_rssi_field_if_not_exists(apps, schema_editor):
+    # Check if the field already exists
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='entryapp_entryexitrecord' AND column_name='rssi'
+        """)
+        if not cursor.fetchone():
+            # Field doesn't exist, add it
+            cursor.execute("ALTER TABLE entryapp_entryexitrecord ADD COLUMN rssi integer NULL")
+
+
+def reverse_add_rssi_field(apps, schema_editor):
+    # Check if the field exists before dropping
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='entryapp_entryexitrecord' AND column_name='rssi'
+        """)
+        if cursor.fetchone():
+            # Field exists, drop it
+            cursor.execute("ALTER TABLE entryapp_entryexitrecord DROP COLUMN rssi")
+
 
 
 class Migration(migrations.Migration):
@@ -15,11 +43,7 @@ class Migration(migrations.Migration):
             name='entryexitrecord',
             options={'ordering': ['-created_at']},
         ),
-        migrations.AddField(
-            model_name='entryexitrecord',
-            name='rssi',
-            field=models.IntegerField(blank=True, null=True),
-        ),
+        migrations.RunPython(add_rssi_field_if_not_exists, reverse_code=reverse_add_rssi_field),
         migrations.AlterField(
             model_name='entryexitrecord',
             name='created_at',
