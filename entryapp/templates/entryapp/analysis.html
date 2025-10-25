@@ -1,0 +1,197 @@
+{% extends 'entryapp/base.html' %}
+{% load static %}
+
+{% block title %}Analiz - Giriş-Çıkış Takip Sistemi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <h2>Veri Analizi</h2>
+        </div>
+        
+        <!-- Mağaza Seçimi -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="shopSelect" class="form-label">Mağaza Seçin:</label>
+                            <select class="form-select" id="shopSelect">
+                                <option value="">Mağaza Seçin</option>
+                                {% for shop in shops %}
+                                <option value="{{ shop.id }}">{{ shop.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button class="btn btn-primary" id="loadDataBtn">Verileri Yükle</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 12 Aylık Veri Grafiği -->
+        <div class="col-12 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Son 12 Ay Verisi (Mevcut Ay Dahil)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="monthlyChart12"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5 Yıllık Veri Grafiği -->
+        <div class="col-12 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Son 5 Yıl Verisi (Mevcut Yıl Dahil)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="monthlyChart5"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userId = "{{ user_id }}";
+    
+    // 12 aylık veri için grafik
+    let monthlyChart12;
+    
+    // 5 yıllık veri için grafik
+    let monthlyChart5;
+    
+    // 12 aylık verileri yükle
+    function loadMonthlyData12(shopId) {
+        if (!shopId) return;
+        
+        fetch(`/api/shops/${userId}/monthly-data/?shop_id=${shopId}`)
+            .then(response => response.json())
+            .then(data => {
+                updateMonthlyChart12(data);
+            })
+            .catch(error => console.error('12 aylık veri yüklenirken hata oluştu:', error));
+    }
+    
+    // 5 yıllık verileri yükle
+    function loadMonthlyData5(shopId) {
+        if (!shopId) return;
+        
+        fetch(`/api/shops/${userId}/yearly-data/?shop_id=${shopId}`)
+            .then(response => response.json())
+            .then(data => {
+                updateMonthlyChart5(data);
+            })
+            .catch(error => console.error('5 yıllık veri yüklenirken hata oluştu:', error));
+    }
+    
+    // 12 aylık grafik güncelle
+    function updateMonthlyChart12(data) {
+        const ctx = document.getElementById('monthlyChart12').getContext('2d');
+        
+        if (monthlyChart12) {
+            monthlyChart12.destroy();
+        }
+        
+        // Aylık verileri sırala
+        const months = data.months || [];
+        const entryCounts = data.entry_counts || [];
+        const exitCounts = data.exit_counts || [];
+        
+        monthlyChart12 = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [
+                    {
+                        label: 'Giriş',
+                        data: entryCounts,
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Çıkış',
+                        data: exitCounts,
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    // 5 yıllık grafik güncelle
+    function updateMonthlyChart5(data) {
+        const ctx = document.getElementById('monthlyChart5').getContext('2d');
+        
+        if (monthlyChart5) {
+            monthlyChart5.destroy();
+        }
+        
+        monthlyChart5 = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.years,
+                datasets: [
+                    {
+                        label: 'Giriş',
+                        data: data.entry_counts,
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Çıkış',
+                        data: data.exit_counts,
+                        backgroundColor: 'rgba(153, 102, 255, 0.5)',
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    // Veri yükleme butonuna tıklanınca
+    document.getElementById('loadDataBtn').addEventListener('click', function() {
+        const shopId = document.getElementById('shopSelect').value;
+        if (shopId) {
+            loadMonthlyData12(shopId);
+            loadMonthlyData5(shopId);
+        } else {
+            alert('Lütfen bir mağaza seçin!');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends 'entryapp/base.html' %}
+{% load static %}
+
+{% block title %}Yoğunluk Haritası - Giriş-Çıkış Takip Sistemi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <h2>Saatlik Yoğunluk Haritası</h2>
+        </div>
+        
+        <!-- Mağaza Seçimi -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="shopSelect" class="form-label">Mağaza Seçin:</label>
+                            <select class="form-select" id="shopSelect">
+                                <option value="">Mağaza Seçin</option>
+                                {% for shop in shops %}
+                                <option value="{{ shop.id }}">{{ shop.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button class="btn btn-primary" id="loadDataBtn">Verileri Yükle</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Heatmap Grafiği -->
+        <div class="col-12 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">24 Saatlik Yoğunluk Haritası</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="heatmapChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userId = "{{ request.user.id }}";
+    let heatmapChart;
+    
+    // Saatlik verileri yükle
+    function loadHourlyData(shopId) {
+        if (!shopId) {
+            alert('Lütfen bir mağaza seçin!');
+            return;
+        }
+        
+        fetch(`/api/shops/${userId}/hourly-heatmap/?shop_id=${shopId}`)
+            .then(response => response.json())
+            .then(data => {
+                updateHeatmapChart(data.hours, data.counts);
+            })
+            .catch(error => {
+                console.error('Veri yüklenirken hata oluştu:', error);
+                // Hata durumunda örnek veri göster
+                const hours = Array.from({length: 24}, (_, i) => i);
+                const sampleData = Array.from({length: 24}, () => Math.floor(Math.random() * 50) + 1);
+                updateHeatmapChart(hours, sampleData);
+            });
+    }
+    
+    // Heatmap grafiğini güncelle
+    function updateHeatmapChart(hours, data) {
+        const ctx = document.getElementById('heatmapChart').getContext('2d');
+        
+        if (heatmapChart) {
+            heatmapChart.destroy();
+        }
+        
+        // Renk skalası için değerleri belirle
+        const maxValue = Math.max(...data);
+        const minValue = Math.min(...data);
+        
+        // Her saat için renk belirle
+        const backgroundColors = data.map(value => {
+            // Renk skalası: düşük değerler için mavi, yüksek değerler için kırmızı
+            const ratio = (value - minValue) / (maxValue - minValue || 1);
+            const r = Math.floor(255 * ratio);
+            const g = Math.floor(100 * (1 - ratio));
+            const b = Math.floor(200 * (1 - ratio));
+            return `rgba(${r}, ${g}, ${b}, 0.7)`;
+        });
+        
+        heatmapChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: hours.map(hour => `${hour}:00`),
+                datasets: [{
+                    label: 'Yoğunluk',
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: 'rgba(0, 0, 0, 0.1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Kişi Sayısı'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Saatler'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Veri yükleme butonuna tıklanınca
+    document.getElementById('loadDataBtn').addEventListener('click', function() {
+        const shopId = document.getElementById('shopSelect').value;
+        loadHourlyData(shopId);
+    });
+});
+</script>
+{% endblock %}

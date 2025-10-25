@@ -113,25 +113,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Son kayıtları yükle
     function loadRecentRecords() {
-        fetch(`/api/shops/${userId}/recent-records/`)
-            .then(response => response.json())
-            .then(data => {
-                updateRecentRecords(data.records);
+        fetch(`/api/users/${userId}/recent-records/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
             })
-            .catch(error => console.error('Veri yüklenirken hata oluştu:', error));
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                updateRecentRecords(data.records || []);
+            })
+            .catch(error => {
+                console.error('Veri yüklenirken hata oluştu:', error);
+                alert('Veri yüklenirken hata oluştu: ' + error.message);
+            });
     }
 
     // İstatistikleri yükle
     function loadStatistics() {
-        fetch(`/api/shops/${userId}/statistics/`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('totalDevices').textContent = data.total_devices;
-                document.getElementById('totalUsers').textContent = data.total_users;
-                document.getElementById('totalShops').textContent = data.total_shops;
-                document.getElementById('dailyEntries').textContent = data.daily_entries;
+        fetch(`/api/users/${userId}/statistics/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
             })
-            .catch(error => console.error('İstatistikler yüklenirken hata oluştu:', error));
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                document.getElementById('totalDevices').textContent = data.total_devices || 0;
+                document.getElementById('totalUsers').textContent = data.total_users || 0;
+                document.getElementById('totalShops').textContent = data.total_shops || 0;
+                document.getElementById('dailyEntries').textContent = data.daily_entries || 0;
+            })
+            .catch(error => {
+                console.error('İstatistikler yüklenirken hata oluştu:', error);
+                alert('İstatistikler yüklenirken hata oluştu: ' + error.message);
+            });
     }
 
     // Son kayıtları güncelle

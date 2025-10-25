@@ -1,0 +1,399 @@
+{% extends 'entryapp/base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Kullanıcılar & Roller{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">Kullanıcılar & Roller</h2>
+            
+            <!-- Customers and Shops Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Müşteriler ve Mağazalar</h5>
+                </div>
+                <div class="card-body">
+                    {% for customer in customers %}
+                    <div class="mb-4">
+                        <h6 class="text-primary">{{ customer.name }}</h6>
+                        <div class="ms-3">
+                            {% with customer_shops|get_item:customer.id as shops %}
+                            {% if shops %}
+                                {% for shop in shops %}
+                                <div class="mb-2">
+                                    <strong>{{ shop.name }}</strong>
+                                    <!-- Users for this shop -->
+                                    {% with shop_users|get_item:shop.id as users %}
+                                    {% if users %}
+                                        <ul class="list-group ms-3">
+                                            {% for user in users %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                {{ user.username }} ({{ user.email }})
+                                                <span>
+                                                    {% with user_roles|get_item:user.id as roles %}
+                                                        {% if roles %}
+                                                            {% for user_role in roles %}
+                                                                <span class="badge bg-primary me-1">{{ user_role.role.name }}</span>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">Rol: Atanmamış</span>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </span>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <small class="text-muted ms-3">Bu mağazada kullanıcı bulunmuyor</small>
+                                    {% endif %}
+                                    {% endwith %}
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <small class="text-muted">Bu müşteriye ait mağaza bulunmuyor</small>
+                            {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p>Henüz müşteri eklenmemiş.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Role Management Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Rol Yönetimi</h5>
+                </div>
+                <div class="card-body">
+                    <form id="roleForm">
+                        <div class="mb-3">
+                            <label for="roleName" class="form-label">Yeni Rol Adı</label>
+                            <input type="text" class="form-control" id="roleName" placeholder="Rol adını girin">
+                        </div>
+                        <div class="mb-3">
+                            <label for="roleDescription" class="form-label">Açıklama (İsteğe Bağlı)</label>
+                            <textarea class="form-control" id="roleDescription" placeholder="Rol açıklamasını girin"></textarea>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="createRole()">Rol Oluştur</button>
+                    </form>
+                    
+                    <hr>
+                    
+                    <h6>Mevcut Roller</h6>
+                    <ul class="list-group mb-3" id="rolesList">
+                        {% for role in roles %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ role.name }}{% if role.description %} - {{ role.description }}{% endif %}
+                            <button class="btn btn-sm btn-danger delete-role-btn" data-role-id="{{ role.id }}">Sil</button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <h6>Kullanıcıya Rol Atama</h6>
+                    <form id="assignRoleForm">
+                        <div class="mb-3">
+                            <label for="userId" class="form-label">Kullanıcı</label>
+                            <select class="form-select" id="userId">
+                                <option value="">Kullanıcı seçin</option>
+                                {% for customer in customers %}
+                                    {% with customer_shops|get_item:customer.id as shops %}
+                                        {% for shop in shops %}
+                                            {% with shop_users|get_item:shop.id as users %}
+                                                {% for user in users %}
+                                                    <option value="{{ user.id }}">{{ user.username }} - {{ customer.name }}/{{ shop.name }}</option>
+                                                {% endfor %}
+                                            {% endwith %}
+                                        {% endfor %}
+                                    {% endwith %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="roleId" class="form-label">Rol</label>
+                            <select class="form-select" id="roleId">
+                                <option value="">Rol seçin</option>
+                                {% for role in roles %}
+                                    <option value="{{ role.id }}">{{ role.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-success" onclick="assignRole()">Rol Ata</button>
+                    </form>
+                    
+                    <hr>
+                    
+                    <h6>Kullanıcıdan Rol Kaldırma</h6>
+                    <form id="removeRoleForm">
+                        <div class="mb-3">
+                            <label for="removeUserId" class="form-label">Kullanıcı</label>
+                            <select class="form-select" id="removeUserId">
+                                <option value="">Kullanıcı seçin</option>
+                                {% for customer in customers %}
+                                    {% with customer_shops|get_item:customer.id as shops %}
+                                        {% for shop in shops %}
+                                            {% with shop_users|get_item:shop.id as users %}
+                                                {% for user in users %}
+                                                    <option value="{{ user.id }}">{{ user.username }} - {{ customer.name }}/{{ shop.name }}</option>
+                                                {% endfor %}
+                                            {% endwith %}
+                                        {% endfor %}
+                                    {% endwith %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="removeRoleId" class="form-label">Rol</label>
+                            <select class="form-select" id="removeRoleId">
+                                <option value="">Rol seçin</option>
+                                {% for role in roles %}
+                                    <option value="{{ role.id }}">{{ role.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-warning" onclick="removeRole()">Rolü Kaldır</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Store the current user ID from Django template context
+    const currentUserId = "{{ user.id }}";
+    
+    // Add event listeners for delete buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteButtons = document.querySelectorAll('.delete-role-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const roleId = this.getAttribute('data-role-id');
+                deleteRole(roleId);
+            });
+        });
+    });
+    
+    function createRole() {
+        const roleName = document.getElementById('roleName').value;
+        const roleDescription = document.getElementById('roleDescription').value;
+        
+        if (roleName.trim() === '') {
+            alert('Lütfen bir rol adı girin.');
+            return;
+        }
+        
+        // Make API call to create role
+        fetch(`/api/users/${currentUserId}/roles/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                name: roleName,
+                description: roleDescription
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Bilinmeyen hata');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                alert('Hata: ' + data.error);
+            } else {
+                alert(`"${data.name}" adlı rol oluşturuldu.`);
+                document.getElementById('roleName').value = '';
+                document.getElementById('roleDescription').value = '';
+                
+                // Add the new role to the list
+                const rolesList = document.getElementById('rolesList');
+                const newRoleItem = document.createElement('li');
+                newRoleItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                newRoleItem.innerHTML = data.name + (data.description ? ' - ' + data.description : '') + ' <button class="btn btn-sm btn-danger delete-role-btn" data-role-id="' + data.id + '">Sil</button>';
+                rolesList.appendChild(newRoleItem);
+                
+                // Add event listener to the new button
+                newRoleItem.querySelector('.delete-role-btn').addEventListener('click', function() {
+                    deleteRole(data.id);
+                });
+                
+                // Add to role selection dropdowns
+                const roleSelect = document.getElementById('roleId');
+                const removeRoleSelect = document.getElementById('removeRoleId');
+                const newOption1 = document.createElement('option');
+                newOption1.value = data.id;
+                newOption1.textContent = data.name;
+                roleSelect.appendChild(newOption1);
+                
+                const newOption2 = document.createElement('option');
+                newOption2.value = data.id;
+                newOption2.textContent = data.name;
+                removeRoleSelect.appendChild(newOption1.cloneNode(true));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Rol oluşturulurken bir hata oluştu: ' + error.message);
+        });
+    }
+    
+    function deleteRole(roleId) {
+        if (!confirm('Bu rolü silmek istediğinize emin misiniz?')) {
+            return;
+        }
+        
+        // Make API call to delete role
+        fetch(`/api/users/${currentUserId}/roles/`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                role_id: roleId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Bilinmeyen hata');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                alert('Hata: ' + data.error);
+            } else {
+                alert(data.message);
+                // Refresh page to show updated roles
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Rol silinirken bir hata oluştu: ' + error.message);
+        });
+    }
+    
+    function assignRole() {
+        const userId = document.getElementById('userId').value;
+        const roleId = document.getElementById('roleId').value;
+        
+        if (!userId || !roleId) {
+            alert('Lütfen hem kullanıcı hem de rol seçin.');
+            return;
+        }
+        
+        // Make API call to assign role
+        fetch(`/api/users/${currentUserId}/assign-role/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                role_id: roleId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Bilinmeyen hata');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                alert('Hata: ' + data.error);
+            } else {
+                alert(data.message);
+                // Reset form
+                document.getElementById('userId').value = '';
+                document.getElementById('roleId').value = '';
+                // Refresh page to show updated roles
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Rol atanırken bir hata oluştu: ' + error.message);
+        });
+    }
+    
+    function removeRole() {
+        const userId = document.getElementById('removeUserId').value;
+        const roleId = document.getElementById('removeRoleId').value;
+        
+        if (!userId || !roleId) {
+            alert('Lütfen hem kullanıcı hem de rol seçin.');
+            return;
+        }
+        
+        // Make API call to remove role
+        fetch(`/api/users/${currentUserId}/assign-role/`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                role_id: roleId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Bilinmeyen hata');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                alert('Hata: ' + data.error);
+            } else {
+                alert(data.message);
+                // Reset form
+                document.getElementById('removeUserId').value = '';
+                document.getElementById('removeRoleId').value = '';
+                // Refresh page to show updated roles
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Rol kaldırılırken bir hata oluştu: ' + error.message);
+        });
+    }
+    
+    // Function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

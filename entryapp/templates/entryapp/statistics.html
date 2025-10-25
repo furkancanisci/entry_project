@@ -6,6 +6,28 @@
 {% block content %}
 <div class="container-fluid">
     <div class="row">
+        <!-- Mağaza Seçimi -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="shopSelect" class="form-label">Mağaza Seçin:</label>
+                            <select class="form-select" id="shopSelect">
+                                <option value="">Tüm Mağazalar</option>
+                                {% for shop in shops %}
+                                <option value="{{ shop.id }}">{{ shop.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button class="btn btn-primary" id="loadDataBtn">Verileri Yükle</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Grafik -->
         <div class="col-12 mb-4">
             <div class="card h-100">
@@ -48,21 +70,58 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const userId = "{{ request.user.id }}";
     let dailyChart;
 
     // Günlük verileri yükle
-    function loadDailyData() {
-        fetch(`/api/shops/${userId}/daily-data/`)
-            .then(response => response.json())
-            .then(data => {
-                updateChart(data);
-                updateRecords(data.records);
+    function loadDailyData(shopId = null) {
+        let url = `/api/shops/${userId}/daily-data/`;
+        if (shopId) {
+            url += `?shop_id=${shopId}`;
+        }
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
             })
-            .catch(error => console.error('Veri yüklenirken hata oluştu:', error));
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                updateChart(data);
+                updateRecords(data.records || []);
+            })
+            .catch(error => {
+                console.error('Veri yüklenirken hata oluştu:', error);
+                alert('Veri yüklenirken hata oluştu: ' + error.message);
+            });
+    }
+
+    // İstatistik verilerini yükle
+    function loadStatistics() {
+        fetch(`/api/users/${userId}/statistics/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                // Update statistics display if needed
+            })
+            .catch(error => {
+                console.error('İstatistikler yüklenirken hata oluştu:', error);
+                alert('İstatistikler yüklenirken hata oluştu: ' + error.message);
+            });
     }
 
     // Grafiği güncelle
@@ -76,18 +135,18 @@ document.addEventListener('DOMContentLoaded', function() {
         dailyChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: data.dates,
+                labels: [data.date],
                 datasets: [
                     {
                         label: 'Giriş',
-                        data: data.entry_counts,
+                        data: [data.entry_count],
                         backgroundColor: 'rgba(75, 192, 192, 0.5)',
                         borderColor: 'rgba(75, 192, 192, 1)',
                         borderWidth: 1
                     },
                     {
                         label: 'Çıkış',
-                        data: data.exit_counts,
+                        data: [data.exit_count],
                         backgroundColor: 'rgba(255, 99, 132, 0.5)',
                         borderColor: 'rgba(255, 99, 132, 1)',
                         borderWidth: 1
@@ -134,11 +193,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Sayfa yüklendiğinde verileri yükle
+    // Veri yükleme butonuna tıklanınca
+    document.getElementById('loadDataBtn').addEventListener('click', function() {
+        const shopId = document.getElementById('shopSelect').value;
+        loadDailyData(shopId);
+    });
+
+    // Sayfa yüklendiğinde tüm mağazalar için verileri yükle
     loadDailyData();
 
     // Her 30 saniyede bir verileri güncelle
-    setInterval(loadDailyData, 30000);
+    setInterval(function() {
+        const shopId = document.getElementById('shopSelect').value;
+        loadDailyData(shopId);
+    }, 30000);
 });
 </script>
 {% endblock %} 
