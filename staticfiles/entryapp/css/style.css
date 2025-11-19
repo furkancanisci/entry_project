@@ -49,21 +49,13 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.logo-icon {
+.logo-container img {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, #4361ee, #3f37c9);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    object-fit: cover;
     margin-bottom: 1rem;
+    border-radius: 50%;
     box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
-}
-
-.logo-icon i {
-    font-size: 2rem;
-    color: #fff;
 }
 
 .logo-container h3 {

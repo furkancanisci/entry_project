@@ -15,7 +15,7 @@
             <div class="card">
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <label for="shopSelect" class="form-label">Mağaza Seçin:</label>
                             <select class="form-select" id="shopSelect">
                                 <option value="">Mağaza Seçin</option>
@@ -23,9 +23,6 @@
                                 <option value="{{ shop.id }}">{{ shop.name }}</option>
                                 {% endfor %}
                             </select>
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <button class="btn btn-primary" id="loadDataBtn">Verileri Yükle</button>
                         </div>
                     </div>
                 </div>
@@ -57,25 +54,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // Saatlik verileri yükle
     function loadHourlyData(shopId) {
         if (!shopId) {
-            alert('Lütfen bir mağaza seçin!');
+            // Clear chart if no shop selected
+            if (heatmapChart) {
+                heatmapChart.destroy();
+            }
             return;
         }
         
         fetch(`/api/shops/${userId}/hourly-heatmap/?shop_id=${shopId}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
                 updateHeatmapChart(data.hours, data.counts);
             })
             .catch(error => {
                 console.error('Veri yüklenirken hata oluştu:', error);
-                // Hata durumunda örnek veri göster
-                const hours = Array.from({length: 24}, (_, i) => i);
-                const sampleData = Array.from({length: 24}, () => Math.floor(Math.random() * 50) + 1);
-                updateHeatmapChart(hours, sampleData);
+                alert('Veri yüklenirken hata oluştu: ' + error.message);
             });
     }
     
-    // Heatmap grafiğini güncelle
+    // Heatmap grafiğini güncelle - redesigned for better density representation
     function updateHeatmapChart(hours, data) {
         const ctx = document.getElementById('heatmapChart').getContext('2d');
         
@@ -87,14 +92,39 @@ document.addEventListener('DOMContentLoaded', function() {
         const maxValue = Math.max(...data);
         const minValue = Math.min(...data);
         
-        // Her saat için renk belirle
+        // Her saat için renk belirle - daha iyi bir heatmap için
         const backgroundColors = data.map(value => {
-            // Renk skalası: düşük değerler için mavi, yüksek değerler için kırmızı
-            const ratio = (value - minValue) / (maxValue - minValue || 1);
-            const r = Math.floor(255 * ratio);
-            const g = Math.floor(100 * (1 - ratio));
-            const b = Math.floor(200 * (1 - ratio));
-            return `rgba(${r}, ${g}, ${b}, 0.7)`;
+            // Renk skalası: düşük değerler için açık mavi, yüksek değerler için koyu kırmızı
+            const ratio = maxValue > 0 ? (value - minValue) / (maxValue - minValue) : 0;
+            
+            // Heatmap renk skalası (daha görsel olarak etkileyici)
+            if (ratio < 0.2) {
+                return 'rgba(0, 0, 255, 0.2)'; // Çok düşük yoğunluk - açık mavi
+            } else if (ratio < 0.4) {
+                return 'rgba(0, 128, 255, 0.4)'; // Düşük yoğunluk - açık turkuaz
+            } else if (ratio < 0.6) {
+                return 'rgba(0, 255, 255, 0.6)'; // Orta yoğunluk - açık yeşil
+            } else if (ratio < 0.8) {
+                return 'rgba(255, 255, 0, 0.7)'; // Yüksek yoğunluk - sarı
+            } else {
+                return 'rgba(255, 0, 0, 0.9)'; // Çok yüksek yoğunluk - kırmızı
+            }
+        });
+        
+        // Border colors for better visibility
+        const borderColors = data.map(value => {
+            const ratio = maxValue > 0 ? (value - minValue) / (maxValue - minValue) : 0;
+            if (ratio < 0.2) {
+                return 'rgba(0, 0, 255, 0.5)';
+            } else if (ratio < 0.4) {
+                return 'rgba(0, 128, 255, 0.6)';
+            } else if (ratio < 0.6) {
+                return 'rgba(0, 255, 255, 0.7)';
+            } else if (ratio < 0.8) {
+                return 'rgba(255, 255, 0, 0.8)';
+            } else {
+                return 'rgba(255, 0, 0, 1)';
+            }
         });
         
         heatmapChart = new Chart(ctx, {
@@ -105,25 +135,54 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Yoğunluk',
                     data: data,
                     backgroundColor: backgroundColors,
-                    borderColor: 'rgba(0, 0, 0, 0.1)',
-                    borderWidth: 1
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false,
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Yoğunluk: ${context.parsed.y} kişi`;
+                            }
+                        }
+                    }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'Kişi Sayısı'
+                            text: 'Kişi Sayısı',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
                         }
                     },
                     x: {
                         title: {
                             display: true,
-                            text: 'Saatler'
+                            text: 'Saatler',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            display: false
                         }
                     }
                 }
@@ -131,11 +190,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Veri yükleme butonuna tıklanınca
-    document.getElementById('loadDataBtn').addEventListener('click', function() {
-        const shopId = document.getElementById('shopSelect').value;
+    // Mağaza seçimi değiştiğinde otomatik olarak verileri yükle
+    document.getElementById('shopSelect').addEventListener('change', function() {
+        const shopId = this.value;
         loadHourlyData(shopId);
     });
+    
+    // Sayfa yüklendiğinde mevcut seçili mağaza varsa verileri yükle
+    const initialShopId = document.getElementById('shopSelect').value;
+    if (initialShopId) {
+        loadHourlyData(initialShopId);
+    }
 });
 </script>
 {% endblock %}

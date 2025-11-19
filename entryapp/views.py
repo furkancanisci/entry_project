@@ -1904,6 +1904,111 @@ class YearlyDataView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class FilteredDataView(APIView):
+    def get(self, request, user_id):
+        try:
+            # Get user
+            user = User.objects.get(id=user_id)  # type: ignore
+            
+            # Get shop_id from query parameters
+            shop_id = request.query_params.get("shop_id")
+            if not shop_id:
+                return Response(
+                    {"error": "Hangi mağazanın verisi istendiği belirtilmedi (shop_id eksik)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            # Convert shop_id to integer
+            try:
+                shop_id = int(shop_id)
+            except ValueError:
+                return Response(
+                    {"error": "Geçersiz shop_id formatı."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Check if user can access this shop
+            user_shops = get_user_shops(user)
+            try:
+                shop = user_shops.get(id=shop_id)
+            except Shop.DoesNotExist:  # type: ignore
+                return Response(
+                    {"error": "Belirtilen mağaza bulunamadı veya bu kullanıcıya ait değil."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            
+            # Get date range from query parameters
+            date_range = request.query_params.get("range", "monthly")  # default to monthly
+            start_date_str = request.query_params.get("start_date")
+            end_date_str = request.query_params.get("end_date")
+            
+            # Calculate date range based on the selected option
+            today = timezone.now().date()
+            
+            if date_range == "weekly":
+                # Last 7 days (including today)
+                end_date = timezone.make_aware(datetime.combine(today, time.max))
+                start_date = timezone.make_aware(datetime.combine(today - timedelta(days=6), time.min))
+                date_format = '%Y-%m-%d'
+            elif date_range == "monthly":
+                # Last 30 days (including today)
+                end_date = timezone.make_aware(datetime.combine(today, time.max))
+                start_date = timezone.make_aware(datetime.combine(today - timedelta(days=29), time.min))
+                date_format = '%Y-%m-%d'
+            elif date_range == "custom" and start_date_str and end_date_str:
+                # Custom date range
+                try:
+                    start_date = timezone.make_aware(datetime.combine(datetime.strptime(start_date_str, '%Y-%m-%d').date(), time.min))
+                    end_date = timezone.make_aware(datetime.combine(datetime.strptime(end_date_str, '%Y-%m-%d').date(), time.max))
+                    date_format = '%Y-%m-%d'
+                except ValueError:
+                    return Response(
+                        {"error": "Geçersiz tarih formatı. YYYY-MM-DD formatında olmalıdır."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                # Default to monthly (last 30 days)
+                end_date = timezone.make_aware(datetime.combine(today, time.max))
+                start_date = timezone.make_aware(datetime.combine(today - timedelta(days=29), time.min))
+                date_format = '%Y-%m-%d'
+            
+            # Get records for the specified date range
+            records = EntryExitRecord.objects.filter(  # type: ignore
+                shop=shop,
+                created_at__gte=start_date,
+                created_at__lte=end_date
+            ).order_by('created_at')
+            
+            # Group records by date
+            daily_data = {}
+            for record in records:
+                date_key = record.created_at.strftime(date_format)
+                if date_key not in daily_data:
+                    daily_data[date_key] = {
+                        'entry_count': 0,
+                        'exit_count': 0
+                    }
+                if record.is_entry:
+                    daily_data[date_key]['entry_count'] += 1
+                else:
+                    daily_data[date_key]['exit_count'] += 1
+            
+            # Prepare response data
+            labels = list(daily_data.keys())
+            entry_counts = [daily_data[label]['entry_count'] for label in labels]
+            exit_counts = [daily_data[label]['exit_count'] for label in labels]
+            
+            return Response({
+                'labels': labels,
+                'entry_counts': entry_counts,
+                'exit_counts': exit_counts
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:  # type: ignore
+            return Response({"error": "Kullanıcı bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 def register_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -1955,6 +2060,161 @@ class RoleListCreateView(APIView):
             import logging
             logger = logging.getLogger(__name__)
             logger.info(f"Role list request - user_id from URL: {user_id}, authenticated user: {request.user.id if request.user.is_authenticated else 'None'}")
+            
+            # Verify requesting user exists and is superuser
+            requesting_user = User.objects.get(id=user_id)
+            logger.info(f"Requesting user: {requesting_user.username}, is_superuser: {requesting_user.is_superuser}")
+            
+            if not requesting_user.is_superuser:
+                logger.warning(f"User {requesting_user.username} is not a superuser")
+                return Response({
+                    "error": "Bu işlemi yapmak için yetkiniz yok."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            roles = Role.objects.all()
+            serializer = RoleSerializer(roles, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:  # type: ignore
+            logger.error(f"User with id {user_id} does not exist")
+            return Response({
+                "error": "Kullanıcı bulunamadı."
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error in role listing: {str(e)}", exc_info=True)
+            return Response({
+                "error": f"Rol listeleme sırasında hata oluştu: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def post(self, request, user_id):
+        """Create a new role"""
+        try:
+            # Log the request for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Role creation request - user_id from URL: {user_id}, authenticated user: {request.user.id if request.user.is_authenticated else 'None'}")
+            
+            # Verify requesting user exists and is superuser
+            requesting_user = User.objects.get(id=user_id)
+            logger.info(f"Requesting user: {requesting_user.username}, is_superuser: {requesting_user.is_superuser}")
+            
+            if not requesting_user.is_superuser:
+                logger.warning(f"User {requesting_user.username} is not a superuser")
+                return Response({
+                    "error": "Bu işlemi yapmak için yetkiniz yok."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            serializer = RoleSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                logger.error(f"Role creation failed: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:  # type: ignore
+            logger.error(f"User with id {user_id} does not exist")
+            return Response({
+                "error": "Kullanıcı bulunamadı."
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error in role creation: {str(e)}", exc_info=True)
+            return Response({
+                "error": f"Rol oluşturma sırasında hata oluştu: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class RoleDetailView(APIView):
+    """
+    API endpoint for retrieving, updating, and deleting a specific role.
+    Only accessible by superusers.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, user_id, role_id):
+        """Get a specific role"""
+        try:
+            # Log the request for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Role detail request - user_id from URL: {user_id}, role_id from URL: {role_id}, authenticated user: {request.user.id if request.user.is_authenticated else 'None'}")
+            
+            # Verify requesting user exists and is superuser
+            requesting_user = User.objects.get(id=user_id)
+            logger.info(f"Requesting user: {requesting_user.username}, is_superuser: {requesting_user.is_superuser}")
+            
+            if not requesting_user.is_superuser:
+                logger.warning(f"User {requesting_user.username} is not a superuser")
+                return Response({
+                    "error": "Bu işlemi yapmak için yetkiniz yok."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            role = Role.objects.get(id=role_id)
+            serializer = RoleSerializer(role)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:  # type: ignore
+            logger.error(f"User with id {user_id} does not exist")
+            return Response({
+                "error": "Kullanıcı bulunamadı."
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Role.DoesNotExist:  # type: ignore
+            logger.error(f"Role with id {role_id} does not exist")
+            return Response({
+                "error": "Rol bulunamadı."
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error in role retrieval: {str(e)}", exc_info=True)
+            return Response({
+                "error": f"Rol alırken hata oluştu: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def put(self, request, user_id, role_id):
+        """Update a specific role"""
+        try:
+            # Log the request for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Role update request - user_id from URL: {user_id}, role_id from URL: {role_id}, authenticated user: {request.user.id if request.user.is_authenticated else 'None'}")
+            
+            # Verify requesting user exists and is superuser
+            requesting_user = User.objects.get(id=user_id)
+            logger.info(f"Requesting user: {requesting_user.username}, is_superuser: {requesting_user.is_superuser}")
+            
+            if not requesting_user.is_superuser:
+                logger.warning(f"User {requesting_user.username} is not a superuser")
+                return Response({
+                    "error": "Bu işlemi yapmak için yetkiniz yok."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            role = Role.objects.get(id=role_id)
+            serializer = RoleSerializer(role, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                logger.error(f"Role update failed: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:  # type: ignore
+            logger.error(f"User with id {user_id} does not exist")
+            return Response({
+                "error": "Kullanıcı bulunamadı."
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Role.DoesNotExist:  # type: ignore
+            logger.error(f"Role with id {role_id} does not exist")
+            return Response({
+                "error": "Rol bulunamadı."
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error in role update: {str(e)}", exc_info=True)
+            return Response({
+                "error": f"Rol güncelleme sırasında hata oluştu: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def delete(self, request, user_id, role_id):
+        """Delete a specific role"""
+        try:
+            # Log the request for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Role deletion request - user_id from URL: {user_id}, role_id from URL: {role_id}, authenticated user: {request.user.id if request.user.is_authenticated else 'None'}")
             
             # Verify requesting user exists and is superuser
             requesting_user = User.objects.get(id=user_id)

@@ -7,9 +7,10 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Mağazalar</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addShopModal">
+        {% comment %} Removed "Add New Store" button as requested {% endcomment %}
+        <!-- <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addShopModal">
             <i class="bi bi-plus-circle"></i> Yeni Mağaza Ekle
-        </button>
+        </button> -->
     </div>
     
     <div class="row">
@@ -40,12 +41,13 @@
                                         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editShopModal{{ shop.id }}">
                                             <i class="bi bi-pencil"></i>
                                         </button>
-                                        <form method="post" action="{% url 'delete_shop' shop.id %}" class="d-inline">
+                                        {% comment %} Removed "Delete Store" button as requested {% endcomment %}
+                                        <!-- <form method="post" action="{% url 'delete_shop' shop.id %}" class="d-inline">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Bu mağazayı silmek istediğinizden emin misiniz?')">
                                                 <i class="bi bi-trash"></i>
                                             </button>
-                                        </form>
+                                        </form> -->
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -62,8 +64,9 @@
     </div>
 </div>
 
+{% comment %} Removed "Add Store" modal as requested {% endcomment %}
 <!-- Yeni Mağaza Ekleme Modal -->
-<div class="modal fade" id="addShopModal" tabindex="-1">
+<!-- <div class="modal fade" id="addShopModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -97,7 +100,7 @@
             </form>
         </div>
     </div>
-</div>
+</div> -->
 
 <!-- Mağaza Düzenleme Modal -->
 {% for shop in shops %}

@@ -15,7 +15,7 @@
             <div class="card">
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <label for="shopSelect" class="form-label">Mağaza Seçin:</label>
                             <select class="form-select" id="shopSelect">
                                 <option value="">Mağaza Seçin</option>
@@ -24,15 +24,49 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <button class="btn btn-primary" id="loadDataBtn">Verileri Yükle</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tarih Aralığı Seçimi -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12">
+                            <label class="form-label">Tarih Aralığı:</label>
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                <button class="btn btn-outline-primary btn-sm date-range-btn" data-range="weekly">Haftalık</button>
+                                <button class="btn btn-outline-primary btn-sm date-range-btn" data-range="monthly">Aylık</button>
+                                <button class="btn btn-outline-primary btn-sm date-range-btn" data-range="custom">Özel Tarih</button>
+                            </div>
+                            <div id="customDateRange" style="display: none;">
+                                <div class="d-flex gap-2">
+                                    <input type="date" class="form-control form-control-sm" id="startDate" placeholder="Başlangıç">
+                                    <input type="date" class="form-control form-control-sm" id="endDate" placeholder="Bitiş">
+                                    <button class="btn btn-primary btn-sm" id="applyCustomDate">Uygula</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- 12 Aylık Veri Grafiği -->
+        <!-- Filtrelenebilir Grafik (Tarih Aralığına Göre Değişen) -->
+        <div class="col-12 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Filtrelenmiş Veri Grafiği</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="filteredChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 12 Aylık Veri Grafiği (Sabit) -->
         <div class="col-12 mb-4">
             <div class="card h-100">
                 <div class="card-header">
@@ -44,7 +78,7 @@
             </div>
         </div>
 
-        <!-- 5 Yıllık Veri Grafiği -->
+        <!-- 5 Yıllık Veri Grafiği (Sabit) -->
         <div class="col-12 mb-4">
             <div class="card h-100">
                 <div class="card-header">
@@ -65,37 +99,166 @@
 document.addEventListener('DOMContentLoaded', function() {
     const userId = "{{ user_id }}";
     
-    // 12 aylık veri için grafik
+    // Filtrelenebilir grafik
+    let filteredChart;
+    
+    // 12 aylık veri için grafik (sabit)
     let monthlyChart12;
     
-    // 5 yıllık veri için grafik
+    // 5 yıllık veri için grafik (sabit)
     let monthlyChart5;
     
-    // 12 aylık verileri yükle
+    // Aktif tarih aralığı
+    let activeDateRange = 'monthly'; // default
+    
+    // Filtrelenebilir verileri yükle
+    function loadFilteredData(shopId, dateRange, startDate = null, endDate = null) {
+        if (!shopId) return;
+        
+        let url = `/api/shops/${userId}/filtered-data/?shop_id=${shopId}`;
+        
+        // Tarih aralığı parametrelerini ekle
+        if (dateRange === 'weekly') {
+            url += '&range=weekly';
+        } else if (dateRange === 'custom' && startDate && endDate) {
+            url += `&range=custom&start_date=${startDate}&end_date=${endDate}`;
+        }
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                updateFilteredChart(data);
+            })
+            .catch(error => {
+                console.error('Filtrelenmiş veri yüklenirken hata oluştu:', error);
+                alert('Filtrelenmiş veri yüklenirken hata oluştu: ' + error.message);
+            });
+    }
+    
+    // 12 aylık verileri yükle (sabit - değişmeden kalan)
     function loadMonthlyData12(shopId) {
         if (!shopId) return;
         
         fetch(`/api/shops/${userId}/monthly-data/?shop_id=${shopId}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
                 updateMonthlyChart12(data);
             })
-            .catch(error => console.error('12 aylık veri yüklenirken hata oluştu:', error));
+            .catch(error => {
+                console.error('12 aylık veri yüklenirken hata oluştu:', error);
+                alert('12 aylık veri yüklenirken hata oluştu: ' + error.message);
+            });
     }
     
-    // 5 yıllık verileri yükle
+    // 5 yıllık verileri yükle (sabit - değişmeden kalan)
     function loadMonthlyData5(shopId) {
         if (!shopId) return;
         
         fetch(`/api/shops/${userId}/yearly-data/?shop_id=${shopId}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
                 updateMonthlyChart5(data);
             })
-            .catch(error => console.error('5 yıllık veri yüklenirken hata oluştu:', error));
+            .catch(error => {
+                console.error('5 yıllık veri yüklenirken hata oluştu:', error);
+                alert('5 yıllık veri yüklenirken hata oluştu: ' + error.message);
+            });
     }
     
-    // 12 aylık grafik güncelle
+    // Tüm verileri yükle
+    function loadAllData() {
+        const shopId = document.getElementById('shopSelect').value;
+        if (!shopId) return;
+        
+        // Filtrelenebilir grafiği tarih aralığına göre yükle
+        if (activeDateRange === 'custom') {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            if (!startDate || !endDate) {
+                alert('Lütfen başlangıç ve bitiş tarihlerini seçin!');
+                return;
+            }
+            loadFilteredData(shopId, activeDateRange, startDate, endDate);
+        } else {
+            loadFilteredData(shopId, activeDateRange);
+        }
+        
+        // Sabit grafikleri yükle (değişmeden kalan)
+        loadMonthlyData12(shopId);
+        loadMonthlyData5(shopId);
+    }
+    
+    // Filtrelenebilir grafik güncelle
+    function updateFilteredChart(data) {
+        const ctx = document.getElementById('filteredChart').getContext('2d');
+        
+        if (filteredChart) {
+            filteredChart.destroy();
+        }
+        
+        // Verileri sırala
+        const labels = data.labels || [];
+        const entryCounts = data.entry_counts || [];
+        const exitCounts = data.exit_counts || [];
+        
+        filteredChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Giriş',
+                        data: entryCounts,
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Çıkış',
+                        data: exitCounts,
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    // 12 aylık grafik güncelle (sabit - değişmeden kalan)
     function updateMonthlyChart12(data) {
         const ctx = document.getElementById('monthlyChart12').getContext('2d');
         
@@ -141,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 5 yıllık grafik güncelle
+    // 5 yıllık grafik güncelle (sabit - değişmeden kalan)
     function updateMonthlyChart5(data) {
         const ctx = document.getElementById('monthlyChart5').getContext('2d');
         
@@ -182,16 +345,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Veri yükleme butonuna tıklanınca
-    document.getElementById('loadDataBtn').addEventListener('click', function() {
-        const shopId = document.getElementById('shopSelect').value;
-        if (shopId) {
-            loadMonthlyData12(shopId);
-            loadMonthlyData5(shopId);
-        } else {
-            alert('Lütfen bir mağaza seçin!');
-        }
+    // Tarih aralığı butonları için event listener
+    document.querySelectorAll('.date-range-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            // Tüm butonlardan active sınıfını kaldır
+            document.querySelectorAll('.date-range-btn').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-primary');
+            });
+            
+            // Tıklanan butona active sınıfı ekle
+            this.classList.remove('btn-outline-primary');
+            this.classList.add('btn-primary');
+            
+            // Aktif tarih aralığını güncelle
+            activeDateRange = this.getAttribute('data-range');
+            
+            // Özel tarih seçiciyi göster/gizle
+            if (activeDateRange === 'custom') {
+                document.getElementById('customDateRange').style.display = 'block';
+            } else {
+                document.getElementById('customDateRange').style.display = 'none';
+                loadAllData();
+            }
+        });
     });
+    
+    // "Uygula" butonu için event listener
+    document.getElementById('applyCustomDate').addEventListener('click', function() {
+        loadAllData();
+    });
+    
+    // Mağaza seçimi değiştiğinde otomatik olarak verileri yükle
+    document.getElementById('shopSelect').addEventListener('change', function() {
+        loadAllData();
+    });
+    
+    // Sayfa yüklendiğinde varsayılan verileri yükle
+    // loadAllData(); // İlk yükleme için mağaza seçilmeli
 });
 </script>
 {% endblock %}

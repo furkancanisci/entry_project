@@ -89,7 +89,6 @@
                         {% for role in roles %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             {{ role.name }}{% if role.description %} - {{ role.description }}{% endif %}
-                            <button class="btn btn-sm btn-danger delete-role-btn" data-role-id="{{ role.id }}">Sil</button>
                         </li>
                         {% endfor %}
                     </ul>
@@ -169,13 +168,7 @@
     
     // Add event listeners for delete buttons
     document.addEventListener('DOMContentLoaded', function() {
-        const deleteButtons = document.querySelectorAll('.delete-role-btn');
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const roleId = this.getAttribute('data-role-id');
-                deleteRole(roleId);
-            });
-        });
+        
     });
     
     function createRole() {
@@ -219,13 +212,8 @@
                 const rolesList = document.getElementById('rolesList');
                 const newRoleItem = document.createElement('li');
                 newRoleItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-                newRoleItem.innerHTML = data.name + (data.description ? ' - ' + data.description : '') + ' <button class="btn btn-sm btn-danger delete-role-btn" data-role-id="' + data.id + '">Sil</button>';
+                newRoleItem.innerHTML = data.name + (data.description ? ' - ' + data.description : '');
                 rolesList.appendChild(newRoleItem);
-                
-                // Add event listener to the new button
-                newRoleItem.querySelector('.delete-role-btn').addEventListener('click', function() {
-                    deleteRole(data.id);
-                });
                 
                 // Add to role selection dropdowns
                 const roleSelect = document.getElementById('roleId');
@@ -244,45 +232,6 @@
         .catch(error => {
             console.error('Error:', error);
             alert('Rol oluşturulurken bir hata oluştu: ' + error.message);
-        });
-    }
-    
-    function deleteRole(roleId) {
-        if (!confirm('Bu rolü silmek istediğinize emin misiniz?')) {
-            return;
-        }
-        
-        // Make API call to delete role
-        fetch(`/api/users/${currentUserId}/roles/`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                role_id: roleId
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.error || 'Bilinmeyen hata');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                alert('Hata: ' + data.error);
-            } else {
-                alert(data.message);
-                // Refresh page to show updated roles
-                location.reload();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Rol silinirken bir hata oluştu: ' + error.message);
         });
     }
     

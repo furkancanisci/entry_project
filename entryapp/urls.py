@@ -5,7 +5,7 @@ from .views import (
     add_device, update_device, delete_device, support_view, permissions_view, update_permissions,
     IndexView, RecentRecordsView, StatisticsView, logout_view, records_view, privacy_policy_view,
     DeviceEntryExitAPIView, APILoginView, delete_all_records, MonthlyDataView, YearlyDataView, register_view, DailyRecordView, analysis_view, heatmap_view, HourlyHeatmapView, users_roles_view,
-    RoleListCreateView, UserRoleAssignmentView, GoalsView, GoalsAPIView
+    RoleListCreateView, UserRoleAssignmentView, GoalsView, GoalsAPIView, FilteredDataView
 )
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
@@ -21,7 +21,7 @@ urlpatterns = [
 
     # Ana sayfalar
     path('home/', IndexView.as_view(), name='home'),
-    path('privacy-policy/', privacy_policy_view, name='home'),
+    path('privacy-policy/', privacy_policy_view, name='privacy_policy'),
     path('shops/', shops_view, name='shops'),
     path('devices/', devices_view, name='devices'),
     path('statistics/', statistics_view, name='statistics'),
@@ -46,6 +46,7 @@ urlpatterns = [
     path('api/shops/<int:user_id>/daily-data/', DailyRecordView.as_view(), name='daily_data'),
     path('api/shops/<int:user_id>/monthly-data/', MonthlyDataView.as_view(), name='monthly_data'),
     path('api/shops/<int:user_id>/yearly-data/', YearlyDataView.as_view(), name='yearly_data'),
+    path('api/shops/<int:user_id>/filtered-data/', FilteredDataView.as_view(), name='filtered_data'),
     path('api/shops/<int:user_id>/hourly-heatmap/', HourlyHeatmapView.as_view(), name='hourly_heatmap'),
     path('api/users/<int:user_id>/shops/', ShopListView.as_view(), name='shop_list'),
     path('api/users/<int:user_id>/recent-records/', RecentRecordsView.as_view(), name='recent_records'),
