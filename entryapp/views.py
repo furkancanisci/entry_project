@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.conf import settings
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
@@ -17,7 +18,6 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, Shop, Device, EntryExitRecord, UserPermission, Customer, Role, UserRole, Goal, DailyEntry
 from .serializers import ShopSerializer, EntryExitRecordSerializer
-
 
 # Helper function to get shops that a user can access
 def get_user_shops(user):
@@ -1665,14 +1665,11 @@ class MonthlyDataView(APIView):
 
 def safe_localtime(dt):
     """
-    Naive datetime → TR timezone aware
-    Aware datetime → direkt localtime
+    Safely convert a datetime to local time, handling both naive and aware datetimes.
     """
-    tz = timezone.get_default_timezone()
-    
     if timezone.is_naive(dt):
-        dt = timezone.make_aware(dt, tz)
-    
+        # If datetime is naive, assume it's in the default timezone
+        dt = timezone.make_aware(dt, timezone.get_default_timezone())
     return timezone.localtime(dt)
 
 
