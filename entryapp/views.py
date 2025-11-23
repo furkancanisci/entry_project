@@ -1662,6 +1662,20 @@ class MonthlyDataView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+def safe_localtime(dt):
+    """
+    Naive datetime → TR timezone aware
+    Aware datetime → direkt localtime
+    """
+    tz = timezone.get_default_timezone()
+    
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, tz)
+    
+    return timezone.localtime(dt)
+
+
 class HourlyDataView(APIView):
     def get(self, request, user_id, start_hour, end_hour):
         try:
@@ -1722,7 +1736,7 @@ class HourlyDataView(APIView):
 
             for record in records:
                 # Kayıt saatini TR saatine çevir
-                local_time = timezone.localtime(record.created_at)
+                local_time = safe_localtime(record.created_at)
                 record_hour = local_time.hour
 
                 # Saatlik blok yoksa oluştur
