@@ -143,7 +143,7 @@ class DailyRecordView(APIView):
             daily_data = {}
             for record in records:
                 # Yerel saate çevir
-                local_time = timezone.localtime(record.created_at)
+                local_time = safe_localtime(record.created_at)
                 date_str = local_time.strftime('%Y-%m-%d')
                 if date_str not in daily_data:
                     daily_data[date_str] = {
@@ -635,7 +635,7 @@ class HomeView(TemplateView):
                 'shop_name': record.shop.name if record.shop else '',
                 'device_id': record.device.id if record.device else None,
                 'device_name': record.device.name if record.device else '',
-                'created_at': record.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'created_at': safe_localtime(record.created_at).strftime('%Y-%m-%d %H:%M:%S'),
                 'is_entry': record.is_entry
             })
         
@@ -988,7 +988,7 @@ class RecentRecordsView(APIView):
             records_data = []
             for record in records:
                 records_data.append({
-                    'date': record.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'date': safe_localtime(record.created_at).strftime('%Y-%m-%d %H:%M:%S'),
                     'shop_name': record.shop.name if record.shop else '',
                     'device_name': record.device.name if record.device else None,
                     'is_entry': record.is_entry
@@ -1666,11 +1666,15 @@ class MonthlyDataView(APIView):
 def safe_localtime(dt):
     """
     Safely convert a datetime to local time, handling both naive and aware datetimes.
+    When USE_TZ = False, datetimes are naive and we need to handle them differently.
     """
     if timezone.is_naive(dt):
-        # If datetime is naive, assume it's in the default timezone
-        dt = timezone.make_aware(dt, timezone.get_default_timezone())
-    return timezone.localtime(dt)
+        # If datetime is naive and USE_TZ = False, just return the datetime as is
+        # since it's already in the local timezone
+        return dt
+    else:
+        # If datetime is timezone-aware, convert it to local time
+        return timezone.localtime(dt)
 
 
 class HourlyDataView(APIView):
@@ -2010,7 +2014,9 @@ class FilteredDataView(APIView):
             # Group records by date
             daily_data = {}
             for record in records:
-                date_key = record.created_at.strftime(date_format)
+                # Use safe_localtime to handle timezone properly
+                local_time = safe_localtime(record.created_at)
+                date_key = local_time.strftime(date_format)
                 if date_key not in daily_data:
                     daily_data[date_key] = {
                         'entry_count': 0,
