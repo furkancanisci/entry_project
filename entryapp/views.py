@@ -159,7 +159,7 @@ class DailyRecordView(APIView):
                     'shop_name': shop.name,
                     'device_id': record.device.id if record.device else None,
                     'device_name': record.device.name if record.device else None,
-                    'date': record.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'date': record.created_at.strftime('%Y-%m-%d %H:%M:%S') if timezone.is_naive(record.created_at) else timezone.localtime(record.created_at).strftime('%Y-%m-%d %H:%M:%S'),
                     'is_entry': record.is_entry
                 })
             
@@ -1729,7 +1729,7 @@ class HourlyDataView(APIView):
                     'id': record.id,
                     'device_id': record.device.id if record.device else None,
                     'device_name': record.device.name if record.device else None,
-                    'date': record.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'date': record.created_at.strftime('%Y-%m-%d %H:%M:%S') if timezone.is_naive(record.created_at) else timezone.localtime(record.created_at).strftime('%Y-%m-%d %H:%M:%S'),
                     'is_entry': record.is_entry
                 })
             
