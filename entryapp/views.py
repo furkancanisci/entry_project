@@ -129,9 +129,10 @@ class DailyRecordView(APIView):
                 shop = shops.first()
             
             # Sadece bugüne ait kayıtları almak için tarih aralığını belirle
+            # Veritabanı UTC zamanında sakladığı için UTC ile karşılaştırmalıyız
             today = timezone.now().date()
-            start_date = timezone.make_aware(datetime.combine(today, time.min))
-            end_date = timezone.make_aware(datetime.combine(today, time.max))
+            start_date = timezone.make_aware(datetime.combine(today, time.min), timezone=timezone.utc)
+            end_date = timezone.make_aware(datetime.combine(today, time.max), timezone=timezone.utc)
         
             records = EntryExitRecord.objects.filter(  # type: ignore
                 shop=shop,
@@ -141,7 +142,9 @@ class DailyRecordView(APIView):
             # Günlük giriş-çıkış sayılarını ve detayları gün bazında hesapla
             daily_data = {}
             for record in records:
-                date_str = record.created_at.strftime('%Y-%m-%d')
+                # Yerel saate çevir
+                local_time = timezone.localtime(record.created_at)
+                date_str = local_time.strftime('%Y-%m-%d')
                 if date_str not in daily_data:
                     daily_data[date_str] = {
                         'entry_count': 0,
@@ -159,7 +162,7 @@ class DailyRecordView(APIView):
                     'shop_name': shop.name,
                     'device_id': record.device.id if record.device else None,
                     'device_name': record.device.name if record.device else None,
-                    'date': record.created_at.strftime('%Y-%m-%d %H:%M:%S') if timezone.is_naive(record.created_at) else timezone.localtime(record.created_at).strftime('%Y-%m-%d %H:%M:%S'),
+                    'date': local_time.strftime('%Y-%m-%d %H:%M:%S'),
                     'is_entry': record.is_entry
                 })
             
@@ -1664,14 +1667,18 @@ class HourlyDataView(APIView):
         try:
             # Kullanıcıyı getir
             user = User.objects.get(id=user_id)
-            
+
             # Saat aralığını kontrol et
-            if start_hour < 0 or start_hour > 23 or end_hour < 0 or end_hour > 23 or start_hour >= end_hour:
+            if (
+                start_hour < 0 or start_hour > 23 or
+                end_hour < 0 or end_hour > 23 or
+                start_hour >= end_hour
+            ):
                 return Response(
                     {"error": "Geçersiz saat aralığı. Saatler 0-23 arasında olmalı ve başlangıç saati bitiş saatinden küçük olmalı."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
+
             # Shop ID'sini al
             shop_id = request.query_params.get("shop_id")
             if not shop_id:
@@ -1679,7 +1686,7 @@ class HourlyDataView(APIView):
                     {"error": "shop_id parametresi gereklidir."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
+
             # Kullanıcının erişim yetkisi olan mağazayı kontrol et
             user_shops = get_user_shops(user)
             try:
@@ -1689,66 +1696,75 @@ class HourlyDataView(APIView):
                     {"error": "Belirtilen mağaza bulunamadı veya bu kullanıcıya ait değil."},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            
-            # Bugünün tarihini al
-            today = timezone.now().date()
-            
-            # Başlangıç ve bitiş zamanlarını oluştur
-            start_datetime = timezone.make_aware(datetime.combine(today, time(start_hour, 0)))
-            end_datetime = timezone.make_aware(datetime.combine(today, time(end_hour, 0)))
-            
-            # Belirtilen saat aralığındaki kayıtları al
-            records = EntryExitRecord.objects.filter(  # type: ignore
+
+            # Bugünün TR tarihini al
+            now = timezone.localtime()  # localtime → TR
+            today = now.date()
+
+            # Başlangıç ve bitiş datetime'larını TR saatine göre oluştur
+            start_dt_local = datetime.combine(today, time(start_hour, 0))
+            end_dt_local = datetime.combine(today, time(end_hour, 0))
+
+            # Bu datetime'ları aware hale getir (TR timezone)
+            tz = timezone.get_default_timezone()
+            start_dt = timezone.make_aware(start_dt_local, tz)
+            end_dt = timezone.make_aware(end_dt_local, tz)
+
+            # Veritabanı UTC saklıyor olsa bile Django otomatik dönüştürür
+            records = EntryExitRecord.objects.filter(
                 shop=shop,
-                created_at__gte=start_datetime,
-                created_at__lt=end_datetime
-            ).order_by('created_at')
-            
+                created_at__gte=start_dt,
+                created_at__lt=end_dt
+            ).order_by("created_at")
+
             # Saatlik verileri hazırla
             hourly_data = {}
+
             for record in records:
-                # Kaydın saatini al
-                record_hour = record.created_at.hour
-                
-                # Saat için veri yapısını oluştur
+                # Kayıt saatini TR saatine çevir
+                local_time = timezone.localtime(record.created_at)
+                record_hour = local_time.hour
+
+                # Saatlik blok yoksa oluştur
                 if record_hour not in hourly_data:
                     hourly_data[record_hour] = {
-                        'entry_count': 0,
-                        'exit_count': 0,
-                        'records': []
+                        "entry_count": 0,
+                        "exit_count": 0,
+                        "records": []
                     }
-                
-                # Giriş/çıkış sayısını güncelle
+
+                # Giriş / çıkış sayısını artır
                 if record.is_entry:
-                    hourly_data[record_hour]['entry_count'] += 1
+                    hourly_data[record_hour]["entry_count"] += 1
                 else:
-                    hourly_data[record_hour]['exit_count'] += 1
-                
-                # Kaydı ekle
-                hourly_data[record_hour]['records'].append({
-                    'id': record.id,
-                    'device_id': record.device.id if record.device else None,
-                    'device_name': record.device.name if record.device else None,
-                    'date': record.created_at.strftime('%Y-%m-%d %H:%M:%S') if timezone.is_naive(record.created_at) else timezone.localtime(record.created_at).strftime('%Y-%m-%d %H:%M:%S'),
-                    'is_entry': record.is_entry
+                    hourly_data[record_hour]["exit_count"] += 1
+
+                # Kayıt detayını ekle
+                hourly_data[record_hour]["records"].append({
+                    "id": record.id,
+                    "device_id": record.device.id if record.device else None,
+                    "device_name": record.device.name if record.device else None,
+                    "date": local_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "is_entry": record.is_entry
                 })
-            
-            # Yanıtı hazırla
+
+            # Sonuç
             response_data = {
-                'shop_id': shop.id,
-                'shop_name': shop.name,
-                'date': today.strftime('%Y-%m-%d'),
-                'start_hour': start_hour,
-                'end_hour': end_hour,
-                'hourly_data': hourly_data
+                "shop_id": shop.id,
+                "shop_name": shop.name,
+                "date": today.strftime("%Y-%m-%d"),
+                "start_hour": start_hour,
+                "end_hour": end_hour,
+                "hourly_data": hourly_data
             }
-            
+
             return Response(response_data, status=status.HTTP_200_OK)
-            
+
         except User.DoesNotExist:  # type: ignore
             return Response({"error": "Kullanıcı bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class HourlyHeatmapView(APIView):
     def get(self, request, user_id):
@@ -1791,9 +1807,10 @@ class HourlyHeatmapView(APIView):
             
             # Calculate data for each hour in the day (0-23)
             for hour in range(24):
-                # Create start and end times for the hour
-                start_time = timezone.make_aware(datetime.combine(today, time(hour, 0)))
-                end_time = timezone.make_aware(datetime.combine(today, time(hour, 59, 59)))
+                # Create start and end times for the hour (UTC timezone ile)
+                # Veritabanı UTC zamanında sakladığı için UTC ile karşılaştırmalıyız
+                start_time = timezone.make_aware(datetime.combine(today, time(hour, 0)), timezone=timezone.utc)
+                end_time = timezone.make_aware(datetime.combine(today, time(hour, 59, 59)), timezone=timezone.utc)
                 
                 # Get records for this hour
                 records = EntryExitRecord.objects.filter(  # type: ignore
