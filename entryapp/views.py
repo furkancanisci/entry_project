@@ -1689,6 +1689,7 @@ class HourlyDataView(APIView):
                     {"error": "Belirtilen mağaza bulunamadı veya bu kullanıcıya ait değil."},
                     status=status.HTTP_404_NOT_FOUND,
                 )
+            today = timezone.now().date()
             
             # Bugünün tarihini al
             start_datetime = timezone.make_aware(datetime.combine(today, time(start_hour, 0)))
