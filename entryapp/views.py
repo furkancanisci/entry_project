@@ -1691,11 +1691,11 @@ class HourlyDataView(APIView):
                 )
             
             # Bugünün tarihini al
-            today = timezone.now().date()
-            
-            # Başlangıç ve bitiş zamanlarını oluştur
-            start_datetime = timezone.make_aware(datetime.combine(today, time(start_hour, 0)))
-            end_datetime = timezone.make_aware(datetime.combine(today, time(end_hour, 0)))
+            local_tz = timezone.get_default_timezone()
+
+            start_datetime = local_tz.localize(datetime.combine(today, time(start_hour, 0)))
+            end_datetime = local_tz.localize(datetime.combine(today, time(end_hour, 0)))
+
             
             # Belirtilen saat aralığındaki kayıtları al
             records = EntryExitRecord.objects.filter(  # type: ignore
