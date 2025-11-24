@@ -1724,7 +1724,8 @@ class HourlyDataView(APIView):
                 else:
                     hourly_data[record_hour]['exit_count'] += 1
                 
-                local_dt = timezone.localtime(record.created_at) - timedelta(hours=3)
+                aware_dt = timezone.make_aware(record.created_at) if timezone.is_naive(record.created_at) else record.created_at
+                local_dt = timezone.localtime(aware_dt) - timedelta(hours=3)
 
                 hourly_data[record_hour]['records'].append({
                     'id': record.id,
