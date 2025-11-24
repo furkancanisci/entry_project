@@ -105,11 +105,6 @@ WSGI_APPLICATION = 'entryproject.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL', 'postgres://postgres:135720@localhost:5432/entryproject')
-    )
-}
 
 
 # Password validation
