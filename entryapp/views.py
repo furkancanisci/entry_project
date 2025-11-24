@@ -1691,17 +1691,9 @@ class HourlyDataView(APIView):
                 )
             
             # Bugünün tarihini al
-            local_tz = timezone.get_default_timezone()
+            start_datetime = timezone.make_aware(datetime.combine(today, time(start_hour, 0)))
+            end_datetime = timezone.make_aware(datetime.combine(today, time(end_hour, 0)))
 
-            start_datetime = timezone.make_aware(
-                datetime.combine(today, time(start_hour, 0)),
-                local_tz
-            )
-
-            end_datetime = timezone.make_aware(
-                datetime.combine(today, time(end_hour, 0)),
-                local_tz
-            )
 
 
             
