@@ -1689,27 +1689,42 @@ class HourlyDataView(APIView):
                     {"error": "Belirtilen mağaza bulunamadı veya bu kullanıcıya ait değil."},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            today = timezone.now().date()
+            # Bugünün tarihini al (Türkiye saat diliminde)
+            import pytz
+            turkey_tz = pytz.timezone('Europe/Istanbul')
+            today = timezone.now().astimezone(turkey_tz).date()
             
-            # Bugünün tarihini al
-            start_datetime = timezone.make_aware(datetime.combine(today, time(start_hour, 0)))
-            end_datetime = timezone.make_aware(datetime.combine(today, time(end_hour, 0)))
-
-
-
+            # Başlangıç ve bitiş zamanlarını oluştur (Türkiye saat diliminde)
+            start_datetime = turkey_tz.localize(datetime.combine(today, time(start_hour, 0)))
+            end_datetime = turkey_tz.localize(datetime.combine(today, time(end_hour, 59, 59)))
             
-            # Belirtilen saat aralığındaki kayıtları al
-            records = EntryExitRecord.objects.filter(  # type: ignore
+            # Veritabanındaki kayıtları al (UTC zamanında saklandığı için dönüşüm gerekiyor)
+            # Önce tüm günün kayıtlarını al
+            day_start = turkey_tz.localize(datetime.combine(today, time.min))
+            day_end = turkey_tz.localize(datetime.combine(today, time.max))
+            
+            # UTC karşılıklarını hesapla
+            utc_day_start = day_start.astimezone(pytz.UTC)
+            utc_day_end = day_end.astimezone(pytz.UTC)
+            
+            # Veritabanından kayıtları al
+            all_records = EntryExitRecord.objects.filter(  # type: ignore
                 shop=shop,
-                created_at__gte=start_datetime,
-                created_at__lt=end_datetime
+                created_at__gte=utc_day_start,
+                created_at__lte=utc_day_end
             ).order_by('created_at')
+            
+            # Saat aralığına göre filtrele
+            records = [record for record in all_records if start_datetime <= record.created_at.astimezone(turkey_tz) <= end_datetime]
             
             # Saatlik verileri hazırla
             hourly_data = {}
             for record in records:
-                # Kaydın saatini al
-                record_hour = record.created_at.hour
+                # UTC zamanını Türkiye saatine çevir
+                record_turkey_time = record.created_at.astimezone(turkey_tz)
+                
+                # Kaydın saatini al (Türkiye saatine göre)
+                record_hour = record_turkey_time.hour
                 
                 # Saat için veri yapısını oluştur
                 if record_hour not in hourly_data:
@@ -1725,14 +1740,12 @@ class HourlyDataView(APIView):
                 else:
                     hourly_data[record_hour]['exit_count'] += 1
                 
-                aware_dt = timezone.make_aware(record.created_at) if timezone.is_naive(record.created_at) else record.created_at
-                local_dt = timezone.localtime(aware_dt)
-
+                # Türkiye saatine göre tarih formatla
                 hourly_data[record_hour]['records'].append({
                     'id': record.id,
                     'device_id': record.device.id if record.device else None,
                     'device_name': record.device.name if record.device else None,
-                    'date': local_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                    'date': record_turkey_time.strftime('%Y-%m-%d %H:%M:%S'),
                     'is_entry': record.is_entry
                 })
             
