@@ -7,3 +7,4 @@ gunicorn
 dj-database-url
 whitenoise==6.6.0
 pytz==2024.1
+psycopg2
