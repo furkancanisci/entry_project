@@ -1001,8 +1001,9 @@ class RecentRecordsView(APIView):
             # Format records data
             records_data = []
             for record in records:
+                turkish_time = record.created_at + timedelta(hours=3)
                 records_data.append({
-                    'date': record.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'date': turkish_time.strftime('%Y-%m-%d %H:%M:%S'),
                     'shop_name': record.shop.name if record.shop else '',
                     'device_name': record.device.name if record.device else None,
                     'is_entry': record.is_entry
