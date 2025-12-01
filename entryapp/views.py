@@ -1742,12 +1742,15 @@ class HourlyDataView(APIView):
                 else:
                     hourly_data[record_hour]['exit_count'] += 1
                 
+                # Add 3 hours to align with Turkey's local time (UTC+3)
+                turkish_time = record.created_at + timedelta(hours=3)
+                
                 # Kaydı ekle
                 hourly_data[record_hour]['records'].append({
                     'id': record.id,
                     'device_id': record.device.id if record.device else None,
                     'device_name': record.device.name if record.device else None,
-                    'date': record.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'date': turkish_time.strftime('%Y-%m-%d %H:%M:%S'),
                     'is_entry': record.is_entry
                 })
             
