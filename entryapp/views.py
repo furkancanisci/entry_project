@@ -1725,12 +1725,13 @@ class HourlyDataView(APIView):
             # Saatlik verileri hazırla
             hourly_data = {}
             for record in records:
-                # Kaydın saatini al
+                # Kaydın saatini al ve 3 saat ekle
                 record_hour = record.created_at.hour
+                turkish_hour = (record_hour + 3) % 24  # 24 saatlik dilimi içinde kalması için mod 24
                 
                 # Saat için veri yapısını oluştur
-                if record_hour not in hourly_data:
-                    hourly_data[record_hour] = {
+                if turkish_hour not in hourly_data:
+                    hourly_data[turkish_hour] = {
                         'entry_count': 0,
                         'exit_count': 0,
                         'records': []
@@ -1738,15 +1739,15 @@ class HourlyDataView(APIView):
                 
                 # Giriş/çıkış sayısını güncelle
                 if record.is_entry:
-                    hourly_data[record_hour]['entry_count'] += 1
+                    hourly_data[turkish_hour]['entry_count'] += 1
                 else:
-                    hourly_data[record_hour]['exit_count'] += 1
+                    hourly_data[turkish_hour]['exit_count'] += 1
                 
                 # Add 3 hours to align with Turkey's local time (UTC+3)
                 turkish_time = record.created_at + timedelta(hours=3)
                 
                 # Kaydı ekle
-                hourly_data[record_hour]['records'].append({
+                hourly_data[turkish_hour]['records'].append({
                     'id': record.id,
                     'device_id': record.device.id if record.device else None,
                     'device_name': record.device.name if record.device else None,
