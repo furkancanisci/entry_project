@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{% static 'entryapp/css/style.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-light">
+<body class="app{% if user.is_authenticated %} has-sidebar{% endif %}">
     {% if user.is_authenticated %}
     <!-- Sidebar -->
     <div class="sidebar">
@@ -79,13 +79,15 @@
             {% endif %}
         </ul>
     </div>
+    {% endif %}
 
     <!-- Main Content -->
     <div class="main-content">
+        {% if user.is_authenticated %}
         <!-- Top Navigation -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm app-navbar">
             <div class="container-fluid">
-                <button class="btn btn-link" id="sidebarToggle">
+                <button class="btn btn-link" id="sidebarToggle" type="button" aria-label="Menüyü aç/kapat">
                     <i class="bi bi-list"></i>
                 </button>
                 <div class="ms-auto d-flex align-items-center">
@@ -102,7 +104,7 @@
                 </div>
             </div>
         </nav>
-    {% endif %}
+        {% endif %}
 
         <!-- Content -->
         <div class="content-wrapper">

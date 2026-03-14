@@ -1,67 +1,39 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gizlilik Politikası</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      margin: 40px auto;
-      padding: 0 20px;
-      max-width: 800px;
-      color: #333;
-      background-color: #f9f9f9;
-    }
-    h1 {
-      color: #1a73e8;
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    p {
-      margin-bottom: 20px;
-    }
-    footer {
-      margin-top: 40px;
-      text-align: center;
-      font-size: 0.9em;
-      color: #888;
-    }
-  </style>
-</head>
-<body>
+{% extends 'entryapp/base.html' %}
 
-  <h1>Gizlilik Politikası</h1>
+{% block title %}Gizlilik Politikası{% endblock %}
 
-  <p>
-    Bu mobil uygulama, son kullanıcıdan herhangi bir kişisel bilgi toplamamaktadır.
-  </p>
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+      <div class="card">
+        <div class="card-body p-4 p-md-5">
+          <h1 class="h3 text-center mb-4">Gizlilik Politikası</h1>
 
-  <p>
-    Uygulamanın amacı, yalnızca anlaşmalı şirketlere özel olarak sunulan içerik ve verileri güvenli biçimde görüntülemektir. Herhangi bir kayıt, konum, cihaz bilgisi ya da kullanıcı verisi işlenmemektedir.
-  </p>
+          <p>Bu mobil uygulama, son kullanıcıdan herhangi bir kişisel bilgi toplamamaktadır.</p>
 
-  <p>
-    Uygulama yalnızca kurumsal erişime yönelik olup, üçüncü taraflarla hiçbir veri paylaşımı yapılmaz.
-  </p>
+          <p>
+            Uygulamanın amacı, yalnızca anlaşmalı şirketlere özel olarak sunulan içerik ve verileri güvenli biçimde görüntülemektir.
+            Herhangi bir kayıt, konum, cihaz bilgisi ya da kullanıcı verisi işlenmemektedir.
+          </p>
 
-  <p>
-    Uygulama içerisinde reklam gösterilmemektedir ve uygulama içi satın alma özelliği bulunmamaktadır.
-  </p>
+          <p>Uygulama yalnızca kurumsal erişime yönelik olup, üçüncü taraflarla hiçbir veri paylaşımı yapılmaz.</p>
 
-  <p>
-    Bu politikada gelecekte herhangi bir değişiklik yapılması durumunda, bu sayfa güncellenecektir.
-  </p>
+          <p>Uygulama içerisinde reklam gösterilmemektedir ve uygulama içi satın alma özelliği bulunmamaktadır.</p>
 
-  <p>
-    Herhangi bir sorunuz varsa lütfen bizimle iletişime geçin:  
-    <strong>samet.muratoglu@hs01.kep.tr</strong>
-  </p>
+          <p>Bu politikada gelecekte herhangi bir değişiklik yapılması durumunda, bu sayfa güncellenecektir.</p>
 
-  <footer>
-    © 2025 Prestige Creative Displays - Tüm hakları saklıdır.
-  </footer>
+          <p class="mb-0">
+            Herhangi bir sorunuz varsa lütfen bizimle iletişime geçin:
+            <strong>samet.muratoglu@hs01.kep.tr</strong>
+          </p>
 
-</body>
-</html>
+          <hr class="my-4" />
+
+          <p class="text-muted text-center mb-0">© 2025 Prestige Creative Displays - Tüm hakları saklıdır.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

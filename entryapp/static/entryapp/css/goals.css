@@ -1,10 +1,10 @@
 .goal-card {
-    border-radius: 15px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.10);
     transition: transform 0.3s ease;
     border: none;
     margin-bottom: 25px;
-    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     color: white;
 }
 
@@ -21,7 +21,7 @@
 }
 
 .chart-container {
-    background: white;
+    background: rgba(16, 24, 40, 0.72);
     border-radius: 10px;
     padding: 20px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
@@ -30,7 +30,7 @@
 }
 
 .target-form {
-    background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     border-radius: 15px;
     padding: 25px;
     box-shadow: 0 10px 20px rgba(0,0,0,0.1);
@@ -44,7 +44,7 @@
 }
 
 .target-form .btn-primary {
-    background: #6a11cb;
+    background: rgba(255, 255, 255, 0.16);
     border: none;
     border-radius: 10px;
     padding: 12px 25px;
@@ -53,7 +53,7 @@
 }
 
 .target-form .btn-primary:hover {
-    background: #2575fc;
+    background: rgba(255, 255, 255, 0.22);
     transform: scale(1.05);
 }
 
@@ -65,15 +65,15 @@
 }
 
 .stat-card.bg-success {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
+    background: linear-gradient(135deg, var(--info-color) 0%, var(--success-color) 100%) !important;
 }
 
 .stat-card.bg-warning {
-    background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%) !important;
+    background: linear-gradient(135deg, var(--warning-color) 0%, rgba(255, 255, 255, 0.22) 100%) !important;
 }
 
 .stat-card.bg-info {
-    background: linear-gradient(135deg, #00c9ff 0%, #92fe9d 100%) !important;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--success-color) 100%) !important;
 }
 
 .progress {
@@ -91,7 +91,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f8f9fa;
+    background: rgba(231, 235, 245, 0.04);
     border-radius: 10px;
     margin: 20px 0;
 }
@@ -103,7 +103,7 @@
 
 /* Compact daily count styles */
 .compact-daily-count {
-    background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+    background: linear-gradient(135deg, rgba(67, 97, 238, 0.14) 0%, rgba(247, 37, 133, 0.10) 100%);
     border-radius: 12px;
     padding: 15px 20px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
@@ -121,7 +121,7 @@
 .compact-daily-count .count-title {
     font-size: 1rem;
     font-weight: 600;
-    color: #6a11cb;
+    color: rgba(33, 37, 41, 0.80);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -135,13 +135,13 @@
 .compact-daily-count .count-display {
     font-size: 1.8rem;
     font-weight: 700;
-    color: #2575fc;
+    color: var(--primary-color);
     margin: 5px 0;
 }
 
 .compact-daily-count .count-ratio {
     font-size: 0.9rem;
-    color: #6a11cb;
+    color: rgba(33, 37, 41, 0.70);
     opacity: 0.8;
 }
 
@@ -155,7 +155,7 @@
 
 .progress-bar-custom {
     height: 100%;
-    background: linear-gradient(90deg, #11998e, #38ef7d);
+    background: linear-gradient(90deg, var(--info-color), var(--success-color));
     border-radius: 4px;
     width: 0%;
     transition: width 1s ease-in-out;
@@ -170,7 +170,7 @@
 }
 
 .goal-table-card .card-title {
-    color: #6a11cb;
+    color: var(--primary-color);
     font-weight: bold;
     border-bottom: 2px solid #f0f0f0;
     padding-bottom: 15px;
@@ -194,7 +194,7 @@
 }
 
 .shop-selection-card .card-title {
-    color: #6a11cb;
+    color: var(--primary-color);
     font-weight: bold;
 }
 
