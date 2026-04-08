@@ -52,6 +52,7 @@ class Device(models.Model):
     device_id = models.CharField(max_length=50, unique=True)
     is_active = models.BooleanField(default=True)  # type: ignore
     last_heartbeat = models.DateTimeField(null=True, blank=True)
+    current_version = models.CharField(max_length=50, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -76,6 +77,20 @@ class EntryExitRecord(models.Model):
 
     def __str__(self):
         return f"{self.shop.name} - {'Entry' if self.is_entry else 'Exit'} at {self.created_at}"
+
+
+class DeviceStatusLog(models.Model):
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='status_logs')
+    topic = models.CharField(max_length=255)
+    payload = models.JSONField(null=True, blank=True)
+    reported_version = models.CharField(max_length=50, null=True, blank=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-received_at']
+
+    def __str__(self):
+        return f"{self.device.device_id} status @ {self.received_at}"
 
 class UserPermission(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='permissions')
