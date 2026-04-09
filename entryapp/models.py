@@ -79,6 +79,7 @@ class EntryExitRecord(models.Model):
         return f"{self.shop.name} - {'Entry' if self.is_entry else 'Exit'} at {self.created_at}"
 
 
+
 class DeviceStatusLog(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='status_logs')
     topic = models.CharField(max_length=255)
