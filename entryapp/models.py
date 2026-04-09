@@ -86,6 +86,7 @@ class DeviceStatusLog(models.Model):
     reported_version = models.CharField(max_length=50, null=True, blank=True)
     received_at = models.DateTimeField(auto_now_add=True)
 
+
     class Meta:
         ordering = ['-received_at']
 

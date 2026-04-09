@@ -17,3 +17,6 @@ dependencies = [
   "uvicorn[standard]",
   "paho-mqtt",
 ]
+
+[project.scripts]
+app = "entryproject.asgi:app"
