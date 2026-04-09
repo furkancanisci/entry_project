@@ -28,9 +28,29 @@ from entryapp.ota.mqtt_service import MqttOtaService
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "entryproject.settings")
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+	raw = os.environ.get(name)
+	if raw is None:
+		return default
+	return raw.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+# Vercel serverless is not a good place for long-lived MQTT connections.
+# Default behavior: disable MQTT on Vercel unless explicitly enabled.
+MQTT_DISABLED = _env_bool("DISABLE_MQTT", default=IS_VERCEL) and not _env_bool(
+	"ENABLE_MQTT", default=False
+)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 	ensure_django_setup()
+	if MQTT_DISABLED:
+		app.state.mqtt = None
+		yield
+		return
+
 	mqtt_service = MqttOtaService()
 	mqtt_service.start()
 	app.state.mqtt = mqtt_service
@@ -58,8 +78,19 @@ except Exception:
 if not static_dir:
 	static_dir = str(Path(__file__).resolve().parent.parent / "staticfiles")
 
-os.makedirs(static_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+try:
+	os.makedirs(static_dir, exist_ok=True)
+except OSError:
+	# Serverless platforms (like Vercel) may use a read-only filesystem at runtime.
+	# If the directory doesn't exist, static files may not be available, but the app
+	# should still start.
+	pass
+
+try:
+	app.mount("/static", StaticFiles(directory=static_dir), name="static")
+except Exception:
+	# If static directory is missing/unreadable, avoid crashing the function.
+	pass
 
 # Mount Django last to act as the catch-all.
 app.mount("/", django_asgi)

@@ -22,8 +22,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ig-11uh6u6r4qd-xuh07kvq1)ytdkiiciav=q#byha9kgtg)s9'
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-ig-11uh6u6r4qd-xuh07kvq1)ytdkiiciav=q#byha9kgtg)s9",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -160,29 +165,37 @@ LOGIN_REDIRECT_URL = 'home'
 LOGIN_URL = 'login'
 
 # Logging configuration
+# NOTE: Vercel serverless filesystem is read-only at runtime (except /tmp).
+# Writing logs to BASE_DIR can crash the function on import.
+_console_handler = {
+    "level": "DEBUG",
+    "class": "logging.StreamHandler",
+}
+
+handlers = {"console": _console_handler}
+root_handlers = ["console"]
+
+if not IS_VERCEL:
+    handlers["file"] = {
+        "level": "DEBUG",
+        "class": "logging.FileHandler",
+        "filename": BASE_DIR / "debug.log",
+    }
+    root_handlers.append("file")
+
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'debug.log',
-        },
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-        },
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": handlers,
+    "root": {
+        "handlers": root_handlers,
+        "level": "DEBUG",
     },
-    'root': {
-        'handlers': ['console', 'file'],
-        'level': 'DEBUG',
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,
+    "loggers": {
+        "django": {
+            "handlers": root_handlers,
+            "level": "DEBUG",
+            "propagate": False,
         },
     },
 }
