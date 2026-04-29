@@ -1,0 +1,27 @@
+{% extends 'entryapp/base.html' %}
+
+{% block title %}Hesabı Sil{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+      <div class="card">
+        <div class="card-body p-4 p-md-5">
+          <h1 class="h4 text-center mb-4">Hesap Silme Onayı</h1>
+
+          <p>Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!</p>
+
+          <div class="d-flex gap-2 justify-content-end mt-4">
+            <a href="{% url 'profile' %}" class="btn btn-secondary">İptal</a>
+            <form action="{% url 'delete_account' %}" method="post" style="display: inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">Evet, Hesabımı Sil</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -578,6 +578,20 @@ def profile_view(request):
     
     return render(request, 'entryapp/profile.html')
 
+
+@login_required
+@require_http_methods(["POST"])
+def delete_account_view(request):
+    user_id = request.user.id
+    logout(request)
+    User.objects.filter(id=user_id).delete()  # type: ignore
+    return redirect('login')
+
+
+@login_required
+def delete_account_confirm_view(request):
+    return render(request, 'entryapp/delete_account_confirm.html')
+
 class ShopViewSet(viewsets.ModelViewSet):
     queryset = Shop.objects.all()  # type: ignore
     serializer_class = ShopSerializer
