@@ -1,0 +1,94 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Saypex - Mağaza Giriş/Çıkış Takip</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'entryapp/css/style.css' %}" />
+  </head>
+  <body class="bg-white">
+    <main>
+      <section class="py-5">
+        <div class="container">
+          <div class="row align-items-center g-4">
+            <div class="col-12 col-lg-6">
+              <div class="d-flex align-items-center gap-3 mb-4">
+                <img
+                  src="{% static 'entryapp/images/saypex.jpeg' %}"
+                  alt="Saypex"
+                  class="img-fluid"
+                  style="max-height: 64px; width: auto;"
+                />
+                <div>
+                  <div class="fw-semibold">Saypex</div>
+                  <div class="text-muted small">Giriş/Çıkış Takip Sistemi</div>
+                </div>
+              </div>
+
+              <h1 class="display-6 fw-bold mb-3">Mağazanızın günlük giriş/çıkış verilerini güvenle yönetin</h1>
+              <p class="lead text-muted mb-4">
+                Mağazada kurulu cihazlarımız üzerinden alınan veriler, raporlama ve analiz için güvenli biçimde sistemimizde saklanır.
+                Veriler yalnızca ilgili mağaza sahipleri/işletme yetkilileriyle paylaşılır.
+              </p>
+
+              <div class="d-flex flex-column flex-sm-row gap-2">
+                <a href="mailto:prestige.pcd@gmail.com" class="btn btn-primary btn-lg">İletişime Geç</a>
+                <a href="{% url 'privacy_policy' %}" class="btn btn-outline-secondary btn-lg">Gizlilik Politikası</a>
+              </div>
+
+              <p class="text-muted small mt-3 mb-0">İletişim: <strong>prestige.pcd@gmail.com</strong></p>
+            </div>
+
+            <div class="col-12 col-lg-6">
+              <div class="card">
+                <div class="card-body p-4 p-md-5">
+                  <h2 class="h5 fw-semibold mb-3">Öne Çıkanlar</h2>
+                  <ul class="list-unstyled mb-0">
+                    <li class="d-flex gap-2 mb-3">
+                      <span class="text-muted">•</span>
+                      <div>
+                        <div class="fw-semibold">Günlük takip</div>
+                        <div class="text-muted small">Mağaza bazlı giriş/çıkış kayıtlarını günlük olarak izleyin.</div>
+                      </div>
+                    </li>
+                    <li class="d-flex gap-2 mb-3">
+                      <span class="text-muted">•</span>
+                      <div>
+                        <div class="fw-semibold">Raporlama & analiz</div>
+                        <div class="text-muted small">Verileri anlaşılır raporlar ve analiz ekranlarıyla görüntüleyin.</div>
+                      </div>
+                    </li>
+                    <li class="d-flex gap-2 mb-3">
+                      <span class="text-muted">•</span>
+                      <div>
+                        <div class="fw-semibold">Güvenli erişim</div>
+                        <div class="text-muted small">Kurumsal erişim modeliyle yetkili kullanıcılar görüntüler.</div>
+                      </div>
+                    </li>
+                    <li class="d-flex gap-2">
+                      <span class="text-muted">•</span>
+                      <div>
+                        <div class="fw-semibold">Veri gizliliği</div>
+                        <div class="text-muted small">Üçüncü taraflarla paylaşım yapılmaz (yasal istisnalar hariç).</div>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-5" />
+
+          <div class="row justify-content-center">
+            <div class="col-12 col-lg-10">
+              <div class="text-center text-muted small">© 2026 Prestige Creative Displays - Tüm hakları saklıdır.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

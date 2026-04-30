@@ -3,7 +3,7 @@ from .views import (
     AddDeviceView, ShopListView, login_view, shops_view, statistics_view, home_view, devices_view,
     users_view, profile_view, add_shop, update_shop, delete_shop,
     add_device, update_device, delete_device, support_view, permissions_view, update_permissions,
-    IndexView, RecentRecordsView, StatisticsView, logout_view, records_view, privacy_policy_view, delete_account_view, delete_account_confirm_view,
+    IndexView, RecentRecordsView, StatisticsView, logout_view, records_view, privacy_policy_view, promo_view, delete_account_view, delete_account_confirm_view,
     DeviceEntryExitAPIView, APILoginView, delete_all_records, MonthlyDataView, YearlyDataView, register_view, DailyRecordView, analysis_view, heatmap_view, HourlyHeatmapView, users_roles_view,
     RoleListCreateView, UserRoleAssignmentView, GoalsView, GoalsAPIView, FilteredDataView
 )
@@ -22,6 +22,7 @@ urlpatterns = [
     # Ana sayfalar
     path('home/', IndexView.as_view(), name='home'),
     path('privacy-policy/', privacy_policy_view, name='privacy_policy'),
+    path('saypex/', promo_view, name='promo'),
     path('account/delete/', delete_account_view, name='delete_account'),
     path('account/delete/confirm/', delete_account_confirm_view, name='delete_account_confirm'),
     path('shops/', shops_view, name='shops'),

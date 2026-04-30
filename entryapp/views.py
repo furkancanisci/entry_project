@@ -981,6 +981,10 @@ def privacy_policy_view(request):
     return render(request, 'entryapp/privacy_policy.html')
 
 
+def promo_view(request):
+    return render(request, 'entryapp/promo.html')
+
+
 class RecentRecordsView(APIView):
     def get(self, request, user_id):
         try:
