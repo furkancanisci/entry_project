@@ -38,16 +38,11 @@ Bu belge yalnızca yeni eklenen "mağaza bildirim saati" özelliğine odaklanır
 
 4) Push gereksinimleri
 - Sunucu FCM kullanır; çalışması için `FCM_SERVER_KEY` ayarlı olmalıdır.
-- Mobil uygulama `push_token`'ı kaydetmeli. Tek token saklanıyor; birden fazla cihaz gerekiyorsa model genişletilmeli.
+- Mobil uygulama `push_token`'ı kaydetmek zorunda değildir. Sunucu token yoksa otomatik olarak mağazaya özel topic'e yollar: `/topics/shop_<shop_id>`.
+- Mobil uygulama bu topic'e FCM SDK ile abone olmalıdır. Örneğin `shop_2` mağazası için cihaz `shop_2` topic'ine subscribe edilmelidir.
+- Eğer uygulama topic'e abone olmazsa test bildirimi de dahil hiçbir push alınmaz.
 
--- Alternatif: Mobil taraf token göndermese bile push (topic) ile bildirim
-
-- Eğer mobil ekip istemezse cihazlar backend'e token göndermeye, sunucu yine bildirim atabilir **FCM topic** kullanarak. Bunun için:
-  - Backend, belirli bir mağaza için `/topics/shop_<shop_id>` hedefiyle mesaj yayınlayabilir (bu repo'da artık token yoksa backend otomatik olarak bu topic'e gönderir).
-  - Mobil uygulamanın istemcisi **uygulama içinde** bu `shop_<shop_id>` topic'ine abone olmalıdır (ör. uygulama açılışında veya mağaza seçildiğinde). Bu abonelik doğrudan FCM SDK tarafından yapılır; token sunucuya gönderilmeyebilir.
-  - Eğer uygulama topic'e abone olmazsa bu yaklaşım çalışmaz (hiçbir cihaz mesaj almaz).
-
-Bu yöntem mobilin sunucuya token göndermesini gerektirmez; ancak istemcinin topic'e abone olması için küçük bir client-side değişiklik gerekir.
+Bu projede backend tarafı artık hem gerçek kayıtlar için hem de test için topic tabanlı gönderimi otomatik kullanır; mobilin sunucuya ayrıca token göndermesi gerekmez.
 
 5) Örnek cURL — mağaza için saat ve token kaydetme
 
@@ -94,21 +89,28 @@ Sunucu bu kaydı işler; eğer `notification_time` 01:00 ise ve `created_at` 01:
 - FCM anahtarı yoksa push atılamaz.
 
 10) Backend test komutu
-- Shop ID 2 için her 10 dakikada bir test bildirimi göndermek için backend tarafında şu komut kullanılabilir:
+- Shop ID 2 için artık her 1 dakikada bir sahte giriş/çıkış kaydı oluşturuluyor ve aynı anda test bildirimi gönderiliyor.
+- Bu iş için backend worker şu komutu çalıştırır:
 
 ```bash
-/Users/furkancanisci/Desktop/entry_project/venv/bin/python manage.py send_shop_test_notification --shop-id 2 --interval 300
+/Users/furkancanisci/Desktop/entry_project/venv/bin/python manage.py fake_entries_and_notify --shop-id 2 --interval 60
 ```
 
-- Sürekli arka planda çalıştırmak için `Procfile` içinde bir `worker` süreci eklendi. Bu worker shop 2 için her 5 dakikada bir test push yollar.
+- Sürekli arka planda çalıştırmak için `Procfile` içinde bir `worker` süreci eklendi. Bu worker shop 2 için her 1 dakikada bir yeni kayıt oluşturur ve push yollar.
 
 - Tek seferlik test için:
 
 ```bash
-/Users/furkancanisci/Desktop/entry_project/venv/bin/python manage.py send_shop_test_notification --shop-id 2 --once
+/Users/furkancanisci/Desktop/entry_project/venv/bin/python manage.py fake_entries_and_notify --shop-id 2 --once
 ```
 
 - Bu komut FCM topic hedefi kullanır: `shop_2`. Mobil uygulamanın bu topic'e abone olması gerekir; token sunucuya gönderilmek zorunda değildir.
+
+11) Mobil ekibin yapması gereken yeni şeyler
+- Uygulama açıldığında veya mağaza seçildiğinde ilgili topic'e subscribe olun: örneğin shop 2 için `shop_2`.
+- Bildirim iznini istemeyi unutmayın; kullanıcı izni kapalıysa push görünmez.
+- Test akışında gerçek cihaz/emu üzerinde uygulamanın arka planda da bildirim alabildiğini doğrulayın.
+- Eğer birden fazla mağaza varsa, kullanıcı hangi mağazayı seçerse o mağazanın topic'ine geçin; eski topic aboneliğini bırakmak iyi olur.
 
 Dosya referansları:
 - `entryapp/models.py`, `entryapp/views.py`, `entryapp/templates/entryapp/shops.html`
