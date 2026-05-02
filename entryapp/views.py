@@ -801,15 +801,19 @@ def add_shop(request):
         address = request.POST.get('address')
         phone = request.POST.get('phone')
         email = request.POST.get('email')
-        notification_time = request.POST.get('notification_time')
+        notification_start_time_value = request.POST.get('notification_start_time') or request.POST.get('notification_time')
+        notification_end_time_value = request.POST.get('notification_end_time') or request.POST.get('notification_time')
         
         try:
+            notification_start_time = _parse_notification_time(notification_start_time_value)
+            notification_end_time = _parse_notification_time(notification_end_time_value)
             shop = Shop.objects.create(  # type: ignore
                 name=name,
                 address=address,
                 phone=phone,
                 email=email,
-                notification_time=_parse_notification_time(notification_time)
+                notification_start_time=notification_start_time,
+                notification_end_time=notification_end_time,
             )
             messages.success(request, 'Mağaza başarıyla eklendi.')
             return redirect('shops')
@@ -827,8 +831,10 @@ def update_shop(request, shop_id):
             shop.address = request.POST.get('address')
             shop.phone = request.POST.get('phone')
             shop.email = request.POST.get('email')
-            notification_time = request.POST.get('notification_time')
-            shop.notification_time = _parse_notification_time(notification_time)
+            notification_start_time_value = request.POST.get('notification_start_time') or request.POST.get('notification_time')
+            notification_end_time_value = request.POST.get('notification_end_time') or request.POST.get('notification_time')
+            shop.notification_start_time = _parse_notification_time(notification_start_time_value)
+            shop.notification_end_time = _parse_notification_time(notification_end_time_value)
             shop.save()
             messages.success(request, 'Mağaza başarıyla güncellendi.')
             return redirect('shops')

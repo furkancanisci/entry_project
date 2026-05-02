@@ -33,6 +33,15 @@ def _sync_pk_sequence(model) -> None:
         )
 
 
+def _should_send_notification(shop: Shop, created_at) -> bool:
+    """Send only when the record time falls within the configured shop window."""
+    if not shop.notification_start_time or not shop.notification_end_time:
+        return False
+
+    created_time = timezone.localtime(created_at).time() if timezone.is_aware(created_at) else created_at.time()
+    return shop.notification_start_time <= created_time <= shop.notification_end_time
+
+
 def create_fake_entry_exit_and_notify(*, shop_id: int, title: str, body: str, topic_prefix: str = 'shop_') -> FakeNotificationResult:
     shop = Shop.objects.get(pk=shop_id)
 
@@ -78,15 +87,23 @@ def create_fake_entry_exit_and_notify(*, shop_id: int, title: str, body: str, to
         )
 
     topic = f'/topics/{topic_prefix}{shop_id}'
-    push_sent, push_message = send_fcm_push(
-        topic,
-        title,
-        body,
-        {
-            'shop_id': str(shop_id),
-            'type': 'shop_test_notification',
-        },
-    )
+    if _should_send_notification(shop, now):
+        push_sent, push_message = send_fcm_push(
+            topic,
+            title,
+            body,
+            {
+                'shop_id': str(shop_id),
+                'type': 'shop_test_notification',
+            },
+        )
+    else:
+        push_sent = False
+        push_message = (
+            f'Push skipped: record time {timezone.localtime(now).strftime("%H:%M:%S")} '
+            f'is outside notification window '
+            f'({shop.notification_start_time} - {shop.notification_end_time}).'
+        )
 
     return FakeNotificationResult(
         shop_id=shop_id,

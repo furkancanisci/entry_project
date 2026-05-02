@@ -38,7 +38,13 @@
                                     <td>{{ shop.address }}</td>
                                     <td>{{ shop.phone }}</td>
                                     <td>{{ shop.email }}</td>
-                                    <td>{% if shop.notification_time %}{{ shop.notification_time|time:"H:i" }}{% else %}-{% endif %}</td>
+                                    <td>
+                                        {% if shop.notification_start_time and shop.notification_end_time %}
+                                            {{ shop.notification_start_time|time:"H:i" }} - {{ shop.notification_end_time|time:"H:i" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editShopModal{{ shop.id }}">
                                             <i class="bi bi-pencil"></i>
@@ -133,8 +139,12 @@
                         <input type="email" class="form-control" id="edit_email{{ shop.id }}" name="email" value="{{ shop.email }}" required>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_notification_time{{ shop.id }}" class="form-label">Bildirim Saati</label>
-                        <input type="time" class="form-control" id="edit_notification_time{{ shop.id }}" name="notification_time" value="{% if shop.notification_time %}{{ shop.notification_time|time:'H:i' }}{% endif %}">
+                        <label for="edit_notification_start_time{{ shop.id }}" class="form-label">Bildirim Başlangıç Saati</label>
+                        <input type="time" class="form-control" id="edit_notification_start_time{{ shop.id }}" name="notification_start_time" value="{% if shop.notification_start_time %}{{ shop.notification_start_time|time:'H:i' }}{% endif %}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_notification_end_time{{ shop.id }}" class="form-label">Bildirim Bitiş Saati</label>
+                        <input type="time" class="form-control" id="edit_notification_end_time{{ shop.id }}" name="notification_end_time" value="{% if shop.notification_end_time %}{{ shop.notification_end_time|time:'H:i' }}{% endif %}">
                     </div>
                 </div>
                 <div class="modal-footer">
