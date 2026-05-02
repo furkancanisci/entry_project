@@ -14,5 +14,11 @@
       "src": "/(.*)",
       "dest": "api/asgi.py"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/fake-entries-and-notify",
+      "schedule": "* * * * *"
+    }
   ]
 }

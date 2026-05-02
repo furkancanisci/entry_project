@@ -17,6 +17,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.asgi import get_asgi_application
+from fastapi import Header, HTTPException, Request
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -65,6 +66,31 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Entry Project", lifespan=lifespan)
 app.include_router(ota_router)
+
+
+@app.api_route("/api/cron/fake-entries-and-notify", methods=["GET", "POST"])
+def fake_entries_and_notify_cron(request: Request, x_vercel_cron: str | None = Header(default=None)):
+	ensure_django_setup()
+	if not x_vercel_cron:
+		raise HTTPException(status_code=403, detail="Cron access required")
+
+	from entryapp.services.fake_notifications import create_fake_entry_exit_and_notify
+	from entryapp.models import Shop
+
+	if not Shop.objects.filter(pk=2).exists():
+		raise HTTPException(status_code=404, detail="Shop 2 not found")
+
+	result = create_fake_entry_exit_and_notify(shop_id=2, title="Test Bildirimi", body="Bu bir test push bildirimidir.", topic_prefix="shop_")
+	return {
+		"ok": True,
+		"shop_id": result.shop_id,
+		"record_id": result.record_id,
+		"record_kind": result.record_kind,
+		"device_id": result.device_id,
+		"topic": result.topic,
+		"push_sent": result.push_sent,
+		"push_message": result.push_message,
+	}
 
 ensure_django_setup()
 django_asgi = get_asgi_application()

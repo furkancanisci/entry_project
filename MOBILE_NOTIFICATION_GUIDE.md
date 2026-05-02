@@ -90,13 +90,14 @@ Sunucu bu kaydı işler; eğer `notification_time` 01:00 ise ve `created_at` 01:
 
 10) Backend test komutu
 - Shop ID 2 için artık her 1 dakikada bir sahte giriş/çıkış kaydı oluşturuluyor ve aynı anda test bildirimi gönderiliyor.
-- Bu iş için backend worker şu komutu çalıştırır:
+- Vercel üzerinde bu iş otomatik cron ile çalışır; deploy sonrası manuel worker açmanız gerekmez.
+- Lokal test veya alternatif ortam için aynı işi şu komut yapar:
 
 ```bash
 /Users/furkancanisci/Desktop/entry_project/venv/bin/python manage.py fake_entries_and_notify --shop-id 2 --interval 60
 ```
 
-- Sürekli arka planda çalıştırmak için `Procfile` içinde bir `worker` süreci eklendi. Bu worker shop 2 için her 1 dakikada bir yeni kayıt oluşturur ve push yollar.
+- `Procfile` içindeki worker yerel/alternatif çalıştırmalar içindir; Vercel tarafında cron endpoint bunu otomatik tetikler.
 
 - Tek seferlik test için:
 
@@ -111,6 +112,7 @@ Sunucu bu kaydı işler; eğer `notification_time` 01:00 ise ve `created_at` 01:
 - Bildirim iznini istemeyi unutmayın; kullanıcı izni kapalıysa push görünmez.
 - Test akışında gerçek cihaz/emu üzerinde uygulamanın arka planda da bildirim alabildiğini doğrulayın.
 - Eğer birden fazla mağaza varsa, kullanıcı hangi mağazayı seçerse o mağazanın topic'ine geçin; eski topic aboneliğini bırakmak iyi olur.
+- Test push'lar artık backend cron'u ile otomatik geldiği için ayrıca bir mobil test butonuna ihtiyaç yok.
 
 Dosya referansları:
 - `entryapp/models.py`, `entryapp/views.py`, `entryapp/templates/entryapp/shops.html`
