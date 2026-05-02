@@ -93,7 +93,25 @@ Sunucu bu kaydı işler; eğer `notification_time` 01:00 ise ve `created_at` 01:
 - Tek token tutuluyor (çoklu cihazlar için genişletme gerekebilir).
 - FCM anahtarı yoksa push atılamaz.
 
+10) Backend test komutu
+- Shop ID 2 için her 10 dakikada bir test bildirimi göndermek için backend tarafında şu komut kullanılabilir:
+
+```bash
+/Users/furkancanisci/Desktop/entry_project/venv/bin/python manage.py send_shop_test_notification --shop-id 2 --interval 300
+```
+
+- Sürekli arka planda çalıştırmak için `Procfile` içinde bir `worker` süreci eklendi. Bu worker shop 2 için her 5 dakikada bir test push yollar.
+
+- Tek seferlik test için:
+
+```bash
+/Users/furkancanisci/Desktop/entry_project/venv/bin/python manage.py send_shop_test_notification --shop-id 2 --once
+```
+
+- Bu komut FCM topic hedefi kullanır: `shop_2`. Mobil uygulamanın bu topic'e abone olması gerekir; token sunucuya gönderilmek zorunda değildir.
+
 Dosya referansları:
 - `entryapp/models.py`, `entryapp/views.py`, `entryapp/templates/entryapp/shops.html`
+- `entryapp/management/commands/send_shop_test_notification.py`
 
 -- Son
