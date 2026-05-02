@@ -50,13 +50,21 @@ def _should_send_notification(shop: Shop, created_at) -> bool:
 
     local_created_at = timezone.localtime(created_at) if timezone.is_aware(created_at) else created_at
     created_time = local_created_at.time()
-    should_send = shop.notification_start_time <= created_time <= shop.notification_end_time
+    start_time = shop.notification_start_time
+    end_time = shop.notification_end_time
+
+    if start_time <= end_time:
+        should_send = start_time <= created_time <= end_time
+    else:
+        # Overnight window, e.g. 23:32 -> 08:32
+        should_send = created_time >= start_time or created_time <= end_time
+
     logger.info(
         'Evaluating fake notification for shop_id=%s local_time=%s window=%s-%s should_send=%s',
         shop.id,
         created_time.strftime('%H:%M:%S'),
-        shop.notification_start_time,
-        shop.notification_end_time,
+        start_time,
+        end_time,
         should_send,
     )
     return should_send
