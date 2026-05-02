@@ -73,9 +73,15 @@ def _parse_notification_time(value):
 
 
 def _should_send_shop_notification(shop, created_at):
-    if not shop.notification_time:
+    """
+    Check if notification should be sent based on time range.
+    Returns True if created_at time is between notification_start_time and notification_end_time.
+    """
+    if not shop.notification_start_time or not shop.notification_end_time:
         return False
-    return created_at.time() >= shop.notification_time
+    
+    created_time = created_at.time() if hasattr(created_at, 'time') else created_at
+    return shop.notification_start_time <= created_time <= shop.notification_end_time
 
 
 def _send_fcm_push(shop, title, body, payload=None):
@@ -1220,7 +1226,8 @@ class ShopNotificationSettingsView(APIView):
             return Response({
                 'shop_id': shop.id,
                 'shop_name': shop.name,
-                'notification_time': shop.notification_time.strftime('%H:%M:%S') if shop.notification_time else None,
+                'notification_start_time': shop.notification_start_time.strftime('%H:%M:%S') if shop.notification_start_time else None,
+                'notification_end_time': shop.notification_end_time.strftime('%H:%M:%S') if shop.notification_end_time else None,
                 'notification_push_token_set': bool((shop.notification_push_token or '').strip()),
             }, status=status.HTTP_200_OK)
         except User.DoesNotExist:  # type: ignore
@@ -1243,26 +1250,41 @@ class ShopNotificationSettingsView(APIView):
             if not shop:
                 return Response({"error": "Belirtilen mağaza bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
 
-            notification_time_value = request.data.get('notification_time') or request.data.get('hour') or request.data.get('time')
+            # Parse start time
+            notification_start_value = request.data.get('notification_start_time')
+            if not notification_start_value:
+                return Response({"error": "notification_start_time gereklidir."}, status=status.HTTP_400_BAD_REQUEST)
             try:
-                notification_time = _parse_notification_time(notification_time_value)
+                notification_start_time = _parse_notification_time(notification_start_value)
             except ValueError as exc:
-                return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": f"notification_start_time: {str(exc)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-            if notification_time is None:
-                return Response({"error": "notification_time gereklidir."}, status=status.HTTP_400_BAD_REQUEST)
+            # Parse end time
+            notification_end_value = request.data.get('notification_end_time')
+            if not notification_end_value:
+                return Response({"error": "notification_end_time gereklidir."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                notification_end_time = _parse_notification_time(notification_end_value)
+            except ValueError as exc:
+                return Response({"error": f"notification_end_time: {str(exc)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate time range
+            if notification_start_time >= notification_end_time:
+                return Response({"error": "notification_start_time must be before notification_end_time"}, status=status.HTTP_400_BAD_REQUEST)
 
             push_token = request.data.get('push_token')
-            shop.notification_time = notification_time
+            shop.notification_start_time = notification_start_time
+            shop.notification_end_time = notification_end_time
             if push_token is not None:
                 shop.notification_push_token = str(push_token).strip()
-            shop.save(update_fields=['notification_time', 'notification_push_token', 'updated_at'])
+            shop.save(update_fields=['notification_start_time', 'notification_end_time', 'notification_push_token', 'updated_at'])
 
             return Response({
-                'message': 'Bildirim saati kaydedildi.',
+                'message': 'Bildirim saatleri kaydedildi.',
                 'shop_id': shop.id,
                 'shop_name': shop.name,
-                'notification_time': shop.notification_time.strftime('%H:%M:%S') if shop.notification_time else None,
+                'notification_start_time': shop.notification_start_time.strftime('%H:%M:%S') if shop.notification_start_time else None,
+                'notification_end_time': shop.notification_end_time.strftime('%H:%M:%S') if shop.notification_end_time else None,
                 'notification_push_token_set': bool((shop.notification_push_token or '').strip()),
             }, status=status.HTTP_200_OK)
         except User.DoesNotExist:  # type: ignore
