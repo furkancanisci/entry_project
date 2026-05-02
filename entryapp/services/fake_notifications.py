@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+import logging
 
 from django.db import IntegrityError, connection
 from django.utils import timezone
 
 from entryapp.models import Device, EntryExitRecord, Shop
 from entryapp.services.fcm_v1 import send_fcm_push
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -36,10 +40,26 @@ def _sync_pk_sequence(model) -> None:
 def _should_send_notification(shop: Shop, created_at) -> bool:
     """Send only when the record time falls within the configured shop window."""
     if not shop.notification_start_time or not shop.notification_end_time:
+        logger.info(
+            'Skipping notification for shop_id=%s because time window is not configured (start=%s end=%s)',
+            shop.id,
+            shop.notification_start_time,
+            shop.notification_end_time,
+        )
         return False
 
-    created_time = timezone.localtime(created_at).time() if timezone.is_aware(created_at) else created_at.time()
-    return shop.notification_start_time <= created_time <= shop.notification_end_time
+    local_created_at = timezone.localtime(created_at) if timezone.is_aware(created_at) else created_at
+    created_time = local_created_at.time()
+    should_send = shop.notification_start_time <= created_time <= shop.notification_end_time
+    logger.info(
+        'Evaluating fake notification for shop_id=%s local_time=%s window=%s-%s should_send=%s',
+        shop.id,
+        created_time.strftime('%H:%M:%S'),
+        shop.notification_start_time,
+        shop.notification_end_time,
+        should_send,
+    )
+    return should_send
 
 
 def create_fake_entry_exit_and_notify(*, shop_id: int, title: str, body: str, topic_prefix: str = 'shop_') -> FakeNotificationResult:
@@ -88,6 +108,7 @@ def create_fake_entry_exit_and_notify(*, shop_id: int, title: str, body: str, to
 
     topic = f'/topics/{topic_prefix}{shop_id}'
     if _should_send_notification(shop, now):
+        logger.info('Sending fake notification for shop_id=%s record_id=%s topic=%s', shop_id, record.id, topic)
         push_sent, push_message = send_fcm_push(
             topic,
             title,
@@ -104,6 +125,7 @@ def create_fake_entry_exit_and_notify(*, shop_id: int, title: str, body: str, to
             f'is outside notification window '
             f'({shop.notification_start_time} - {shop.notification_end_time}).'
         )
+        logger.info('Skipping push for shop_id=%s record_id=%s: %s', shop_id, record.id, push_message)
 
     return FakeNotificationResult(
         shop_id=shop_id,
