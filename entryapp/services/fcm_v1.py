@@ -35,10 +35,14 @@ def _load_service_account_info() -> dict[str, Any] | None:
 
 
 def _get_project_id(service_account_info: dict[str, Any]) -> str | None:
+    # Try environment variables first
     from_settings = getattr(settings, 'FCM_PROJECT_ID', '').strip() or os.environ.get('FCM_PROJECT_ID', '').strip()
     if from_settings:
-        return from_settings
-
+        # Validate: project ID should be alphanumeric with hyphens only, no spaces
+        if ' ' not in from_settings and from_settings.replace('-', '').replace('_', '').isalnum():
+            return from_settings
+    
+    # Fall back to service account JSON
     project_id = service_account_info.get('project_id')
     if isinstance(project_id, str) and project_id.strip():
         return project_id.strip()
