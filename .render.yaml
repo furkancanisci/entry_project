@@ -9,11 +9,3 @@ services:
     envVars:
       - key: DEBUG
         value: "False"
-
-jobs:
-  - type: cron
-    name: fake-entries-every-minute
-    runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python manage.py fake_entries_and_notify --shop-id 2 --interval 60
-    schedule: "*/1 * * * *"
