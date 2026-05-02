@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import json
 import time
 from datetime import datetime
-from urllib import error as urllib_error
-from urllib import request as urllib_request
 
-from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+
+from entryapp.services.fcm_v1 import send_fcm_push
 
 
 class Command(BaseCommand):
@@ -32,16 +30,20 @@ class Command(BaseCommand):
         if interval <= 0:
             raise CommandError('--interval pozitif bir sayı olmalı.')
 
-        server_key = getattr(settings, 'FCM_SERVER_KEY', '').strip()
-        if not server_key:
-            raise CommandError('FCM_SERVER_KEY tanımlı değil. Django settings veya environment içine ekleyin.')
-
         topic = f'/topics/{topic_prefix}{shop_id}'
         self.stdout.write(self.style.SUCCESS(f'Target topic: {topic}'))
         self.stdout.write(self.style.SUCCESS(f'Interval: {interval} seconds'))
 
         while True:
-            sent, response_text = self._send_push(server_key, topic, title, body, shop_id)
+            sent, response_text = send_fcm_push(
+                topic,
+                title,
+                body,
+                {
+                    'shop_id': str(shop_id),
+                    'type': 'shop_test_notification',
+                },
+            )
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
             if sent:
@@ -53,33 +55,3 @@ class Command(BaseCommand):
                 break
 
             time.sleep(interval)
-
-    def _send_push(self, server_key: str, topic: str, title: str, body: str, shop_id: int):
-        payload = {
-            'to': topic,
-            'notification': {
-                'title': title,
-                'body': body,
-            },
-            'data': {
-                'shop_id': str(shop_id),
-                'type': 'shop_test_notification',
-            },
-        }
-
-        request = urllib_request.Request(
-            'https://fcm.googleapis.com/fcm/send',
-            data=json.dumps(payload).encode('utf-8'),
-            headers={
-                'Authorization': f'key={server_key}',
-                'Content-Type': 'application/json',
-            },
-            method='POST',
-        )
-
-        try:
-            with urllib_request.urlopen(request, timeout=10) as response:
-                response_text = response.read().decode('utf-8')
-            return True, response_text
-        except urllib_error.URLError as exc:
-            return False, str(exc)

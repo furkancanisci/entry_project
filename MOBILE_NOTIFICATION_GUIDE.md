@@ -37,7 +37,9 @@ Bu belge yalnızca yeni eklenen "mağaza bildirim saati" özelliğine odaklanır
   - Eğer ilgili `Shop.notification_time` doluysa ve `created_at.time() >= notification_time` ise, sunucu push göndermeyi dener (giriş/çıkış ise).
 
 4) Push gereksinimleri
-- Sunucu FCM kullanır; çalışması için `FCM_SERVER_KEY` ayarlı olmalıdır.
+- Sunucu FCM HTTP v1 kullanır; çalışması için Render ortamında şu env değerleri ayarlı olmalıdır:
+  - `FCM_PROJECT_ID` (Firebase project id)
+  - `FCM_SERVICE_ACCOUNT_JSON` (Firebase service account JSON içeriği, tek satır string)
 - Mobil uygulama `push_token`'ı kaydetmek zorunda değildir. Sunucu token yoksa otomatik olarak mağazaya özel topic'e yollar: `/topics/shop_<shop_id>`.
 - Mobil uygulama bu topic'e FCM SDK ile abone olmalıdır. Örneğin `shop_2` mağazası için cihaz `shop_2` topic'ine subscribe edilmelidir.
 - Eğer uygulama topic'e abone olmazsa test bildirimi de dahil hiçbir push alınmaz.
@@ -86,7 +88,14 @@ Sunucu bu kaydı işler; eğer `notification_time` 01:00 ise ve `created_at` 01:
 
 9) Limitasyonlar
 - Tek token tutuluyor (çoklu cihazlar için genişletme gerekebilir).
-- FCM anahtarı yoksa push atılamaz.
+- `FCM_PROJECT_ID` veya `FCM_SERVICE_ACCOUNT_JSON` eksikse push atılamaz.
+
+12) Render ortam değişkenleri (zorunlu)
+- `FCM_PROJECT_ID=<firebase-project-id>`
+- `FCM_SERVICE_ACCOUNT_JSON=<service-account-json-as-single-line>`
+
+Not:
+- Firebase Console'da Legacy Cloud Messaging kapalı olsa bile bu yapı çalışır; backend artık HTTP v1 kullanır.
 
 10) Backend test komutu
 - Shop ID 2 için artık her 1 dakikada bir sahte giriş/çıkış kaydı oluşturuluyor ve aynı anda test bildirimi gönderiliyor.

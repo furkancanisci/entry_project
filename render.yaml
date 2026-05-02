@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: entry-project
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py migrate
+    startCommand: gunicorn entryproject.wsgi:application --bind 0.0.0.0:8000
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: DJANGO_SETTINGS_MODULE
+        value: entryproject.settings
+
+jobs:
+  - type: cron
+    name: fake-entries-every-minute
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py fake_entries_and_notify --shop-id 2 --interval 60
+    schedule: "*/1 * * * *"  # Komut her 1 dakika
+    region: oregon

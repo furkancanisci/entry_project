@@ -21,6 +21,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 from .models import User, Shop, Device, EntryExitRecord, UserPermission, Customer, Role, UserRole, Goal, DailyEntry
 from .serializers import ShopSerializer, EntryExitRecordSerializer
+from .services.fcm_v1 import send_fcm_push
 
 
 # Helper function to get shops that a user can access
@@ -79,40 +80,11 @@ def _should_send_shop_notification(shop, created_at):
 
 def _send_fcm_push(shop, title, body, payload=None):
     push_token = (shop.notification_push_token or '').strip()
-    server_key = getattr(settings, 'FCM_SERVER_KEY', '').strip()
-
-    if not server_key:
-        return False, 'FCM_SERVER_KEY tanımlı değil.'
 
     # If no per-device token, publish to a topic named "shop_<id>".
     # Clients must subscribe to this topic to receive notifications without sending their token to the backend.
     target = push_token if push_token else f'/topics/shop_{shop.id}'
-
-    message = {
-        'to': target,
-        'notification': {
-            'title': title,
-            'body': body,
-        },
-        'data': payload or {},
-    }
-
-    request = urllib_request.Request(
-        'https://fcm.googleapis.com/fcm/send',
-        data=json.dumps(message).encode('utf-8'),
-        headers={
-            'Authorization': f'key={server_key}',
-            'Content-Type': 'application/json',
-        },
-        method='POST',
-    )
-
-    try:
-        with urllib_request.urlopen(request, timeout=5) as response:
-            response_body = response.read().decode('utf-8')
-        return True, response_body
-    except urllib_error.URLError as exc:
-        return False, str(exc)
+    return send_fcm_push(target, title, body, payload or {})
 
 class ShopDevicesView(APIView):
     def get(self, request, user_id):
