@@ -1,0 +1,99 @@
+# Mağaza Bildirim Saatleri — Kısa Kılavuz
+
+Bu belge yalnızca yeni eklenen "mağaza bildirim saati" özelliğine odaklanır: mobil uygulamanın mağaza için saat ve cihaz token'ı kaydetmesi ve sunucunun kayıt geldiğinde bildirim tetiklemesi.
+
+Özet
+- Model: `Shop.notification_time` (TimeField), `Shop.notification_push_token` (TextField).
+- Önemli endpointler:
+  - `POST /api/shops/<user_id>/notification-settings/` — mağaza için saat ve (opsiyonel) push token kaydetme.
+  - `GET  /api/shops/<user_id>/notification-settings/?shop_id=<shop_id>` — mevcut ayarları alma.
+  - Kayıt endpointleri (ölçüm/giriş-çıkış): `POST /api/records/add/` veya `POST /api/entry-exit-record/` — sunucu burada gelen kaydı işler ve bildirim tetikler.
+
+1) Yetkilendirme
+- `notification-settings` endpoint'i için kullanıcı `user_id` ile doğrulanır; mobil uygulama önce API üzerinden login (JWT) olmalıdır.
+
+2) Mağaza için saat ve token kaydetme (mobilin yapacağı)
+
+- Endpoint: `POST /api/shops/<user_id>/notification-settings/`
+- İçerik-type: `application/json`
+- Body örneği:
+
+```
+{
+  "shop_id": 123,
+  "notification_time": "01:00",        // veya "01:00:00"
+  "push_token": "<FCM_OR_APNS_TOKEN>"  // opsiyonel ama önerilir
+}
+```
+
+- Notlar:
+  - `notification_time` 24 saat formatında `HH:MM` veya `HH:MM:SS` olmalıdır.
+  - `push_token` mobil cihazdan alınan FCM/APNs token'ıdır; sunucuda bu token yoksa bildirim gönderilemez.
+
+3) Sunucu davranışı — kayıt geldiğinde bildirim kontrolü
+
+- Kayıt endpoint'ine gelen her kayıt için (`created_at` zorunlu):
+  - `created_at` parse edilir (format: `YYYY-MM-DD HH:MM:SS`).
+  - Eğer ilgili `Shop.notification_time` doluysa ve `created_at.time() >= notification_time` ise, sunucu push göndermeyi dener (giriş/çıkış ise).
+
+4) Push gereksinimleri
+- Sunucu FCM kullanır; çalışması için `FCM_SERVER_KEY` ayarlı olmalıdır.
+- Mobil uygulama `push_token`'ı kaydetmeli. Tek token saklanıyor; birden fazla cihaz gerekiyorsa model genişletilmeli.
+
+-- Alternatif: Mobil taraf token göndermese bile push (topic) ile bildirim
+
+- Eğer mobil ekip istemezse cihazlar backend'e token göndermeye, sunucu yine bildirim atabilir **FCM topic** kullanarak. Bunun için:
+  - Backend, belirli bir mağaza için `/topics/shop_<shop_id>` hedefiyle mesaj yayınlayabilir (bu repo'da artık token yoksa backend otomatik olarak bu topic'e gönderir).
+  - Mobil uygulamanın istemcisi **uygulama içinde** bu `shop_<shop_id>` topic'ine abone olmalıdır (ör. uygulama açılışında veya mağaza seçildiğinde). Bu abonelik doğrudan FCM SDK tarafından yapılır; token sunucuya gönderilmeyebilir.
+  - Eğer uygulama topic'e abone olmazsa bu yaklaşım çalışmaz (hiçbir cihaz mesaj almaz).
+
+Bu yöntem mobilin sunucuya token göndermesini gerektirmez; ancak istemcinin topic'e abone olması için küçük bir client-side değişiklik gerekir.
+
+5) Örnek cURL — mağaza için saat ve token kaydetme
+
+```bash
+curl -X POST "https://<host>/api/shops/45/notification-settings/" \
+  -H "Authorization: Bearer <JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"shop_id":12, "notification_time":"01:00", "push_token":"<FCM_TOKEN>"}'
+```
+
+Başarılı response (örnek):
+
+```json
+{
+  "message": "Bildirim saati kaydedildi.",
+  "shop_id": 12,
+  "shop_name": "Mağaza X",
+  "notification_time": "01:00:00",
+  "notification_push_token_set": true
+}
+```
+
+6) Örnek cURL — cihazdan kayıt gönderme
+
+```bash
+curl -X POST "https://<host>/api/records/add/" \
+  -H "Content-Type: application/json" \
+  -d '[{"shopid":12, "deviceid":10, "isentry":true, "isexit":false, "rssi":-55, "created_at":"2026-05-01 01:12:34"}]'
+```
+
+Sunucu bu kaydı işler; eğer `notification_time` 01:00 ise ve `created_at` 01:12 ise push gönderilmeye çalışılır.
+
+7) Timezone ve format uyarısı
+- Mevcut implementasyon `created_at`'ı `YYYY-MM-DD HH:MM:SS` olarak bekler ve timezone-aware değildir. Mobil ekip, sunucu saat dilimine uygun zaman (ör. Türkiye UTC+3) göndermeli veya UTC tercih edilecekse backend ile koordinasyon yapmalıdır.
+
+8) Test adımları
+- Mobil uygulamada test token alın.
+- `POST /api/shops/<user_id>/notification-settings/` ile `notification_time` ve `push_token` kaydedin.
+- `POST /api/records/add/` ile `created_at` değeri `notification_time` sonrası olacak şekilde kayıt gönderin.
+- Sunucu loglarında bildirim denemesini kontrol edin.
+
+9) Limitasyonlar
+- Tek token tutuluyor (çoklu cihazlar için genişletme gerekebilir).
+- FCM anahtarı yoksa push atılamaz.
+
+Dosya referansları:
+- `entryapp/models.py`, `entryapp/views.py`, `entryapp/templates/entryapp/shops.html`
+
+-- Son

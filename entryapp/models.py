@@ -11,6 +11,8 @@ class Shop(models.Model):
     address = models.TextField(blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
     email = models.EmailField(blank=True, default='')
+    notification_time = models.TimeField(null=True, blank=True)
+    notification_push_token = models.TextField(blank=True, default='')
     customer_id = models.IntegerField(null=True, blank=True) 
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)

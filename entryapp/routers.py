@@ -3,7 +3,7 @@ from django.urls import path
 from entryapp.views import (
     ShopViewSet, EntryExitRecordViewSet,
     APILoginView, AddEntryExitRecordView,
-    DailyRecordView, MonthlyDataView, HourlyDataView, YearlyDataView
+    DailyRecordView, MonthlyDataView, HourlyDataView, YearlyDataView, ShopNotificationSettingsView
 )
 
 router = DefaultRouter()
@@ -17,6 +17,7 @@ urlpatterns = [
     # API veri işlemleri
     path('entry-exit-record/', AddEntryExitRecordView.as_view(), name='add-entry-exit-record'),
     path('daily-records/', DailyRecordView.as_view(), name='daily_records'),
+    path('shops/<int:user_id>/notification-settings/', ShopNotificationSettingsView.as_view(), name='shop_notification_settings'),
     path('shops/<int:user_id>/monthly-data/', MonthlyDataView.as_view(), name='monthly_data'),
     path('shops/<int:user_id>/yearly-data/', YearlyDataView.as_view(), name='yearly_data'),
     path('shops/<int:user_id>/hourly-data/<int:start_hour>/<int:end_hour>/', HourlyDataView.as_view(), name='hourly_data'),

@@ -4,7 +4,7 @@ from .views import (
     users_view, profile_view, add_shop, update_shop, delete_shop,
     add_device, update_device, delete_device, support_view, permissions_view, update_permissions,
     IndexView, RecentRecordsView, StatisticsView, logout_view, records_view, privacy_policy_view, promo_view, delete_account_view, delete_account_confirm_view,
-    DeviceEntryExitAPIView, APILoginView, delete_all_records, MonthlyDataView, YearlyDataView, register_view, DailyRecordView, analysis_view, heatmap_view, HourlyHeatmapView, users_roles_view,
+    DeviceEntryExitAPIView, APILoginView, delete_all_records, MonthlyDataView, YearlyDataView, register_view, DailyRecordView, analysis_view, heatmap_view, HourlyHeatmapView, users_roles_view, ShopNotificationSettingsView,
     RoleListCreateView, UserRoleAssignmentView, GoalsView, GoalsAPIView, FilteredDataView
 )
 from rest_framework.routers import DefaultRouter
@@ -57,6 +57,7 @@ urlpatterns = [
     path('api/devices/add/', AddDeviceView.as_view(), name='add_device'),
     path('api/records/add/', DeviceEntryExitAPIView.as_view(), name='add_record'),
     path('api/entry-exit-record/', DeviceEntryExitAPIView.as_view(), name='device-records'),
+    path('api/shops/<int:user_id>/notification-settings/', ShopNotificationSettingsView.as_view(), name='shop_notification_settings'),
     
     # Role management API endpoints
     path('api/users/<int:user_id>/roles/', RoleListCreateView.as_view(), name='role_list_create'),

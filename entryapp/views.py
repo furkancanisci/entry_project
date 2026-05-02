@@ -15,6 +15,10 @@ from django.views.generic import TemplateView
 from rest_framework import viewsets, permissions
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+import json
+import logging
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 from .models import User, Shop, Device, EntryExitRecord, UserPermission, Customer, Role, UserRole, Goal, DailyEntry
 from .serializers import ShopSerializer, EntryExitRecordSerializer
 
@@ -49,6 +53,66 @@ def get_user_shops(user):
     else:
         # Regular user can only see their assigned shop
         return Shop.objects.filter(id=user.shop_id)  # type: ignore
+
+
+def _parse_notification_time(value):
+    if value in (None, ''):
+        return None
+
+    if hasattr(value, 'hour') and hasattr(value, 'minute'):
+        return value
+
+    normalized_value = str(value).strip()
+    for time_format in ('%H:%M', '%H:%M:%S'):
+        try:
+            return datetime.strptime(normalized_value, time_format).time()
+        except ValueError:
+            continue
+    raise ValueError('Geçersiz saat formatı. HH:MM veya HH:MM:SS kullanın.')
+
+
+def _should_send_shop_notification(shop, created_at):
+    if not shop.notification_time:
+        return False
+    return created_at.time() >= shop.notification_time
+
+
+def _send_fcm_push(shop, title, body, payload=None):
+    push_token = (shop.notification_push_token or '').strip()
+    server_key = getattr(settings, 'FCM_SERVER_KEY', '').strip()
+
+    if not server_key:
+        return False, 'FCM_SERVER_KEY tanımlı değil.'
+
+    # If no per-device token, publish to a topic named "shop_<id>".
+    # Clients must subscribe to this topic to receive notifications without sending their token to the backend.
+    target = push_token if push_token else f'/topics/shop_{shop.id}'
+
+    message = {
+        'to': target,
+        'notification': {
+            'title': title,
+            'body': body,
+        },
+        'data': payload or {},
+    }
+
+    request = urllib_request.Request(
+        'https://fcm.googleapis.com/fcm/send',
+        data=json.dumps(message).encode('utf-8'),
+        headers={
+            'Authorization': f'key={server_key}',
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
+
+    try:
+        with urllib_request.urlopen(request, timeout=5) as response:
+            response_body = response.read().decode('utf-8')
+        return True, response_body
+    except urllib_error.URLError as exc:
+        return False, str(exc)
 
 class ShopDevicesView(APIView):
     def get(self, request, user_id):
@@ -759,13 +823,15 @@ def add_shop(request):
         address = request.POST.get('address')
         phone = request.POST.get('phone')
         email = request.POST.get('email')
+        notification_time = request.POST.get('notification_time')
         
         try:
             shop = Shop.objects.create(  # type: ignore
                 name=name,
                 address=address,
                 phone=phone,
-                email=email
+                email=email,
+                notification_time=_parse_notification_time(notification_time)
             )
             messages.success(request, 'Mağaza başarıyla eklendi.')
             return redirect('shops')
@@ -783,6 +849,8 @@ def update_shop(request, shop_id):
             shop.address = request.POST.get('address')
             shop.phone = request.POST.get('phone')
             shop.email = request.POST.get('email')
+            notification_time = request.POST.get('notification_time')
+            shop.notification_time = _parse_notification_time(notification_time)
             shop.save()
             messages.success(request, 'Mağaza başarıyla güncellendi.')
             return redirect('shops')
@@ -1110,6 +1178,31 @@ class DeviceEntryExitAPIView(APIView):
                         rssi=int(record['rssi']),
                         created_at=created_at
                     )
+
+                    if _should_send_shop_notification(shop, created_at) and (entry_record.is_entry or entry_record.is_exit):
+                        action_text = 'giriş' if entry_record.is_entry and not entry_record.is_exit else 'çıkış' if entry_record.is_exit and not entry_record.is_entry else 'giriş/çıkış'
+                        title = f'{shop.name} için güvenlik bildirimi'
+                        body = f'{shop.name} mağazasında {created_at.strftime("%H:%M")} saatinden sonra {action_text} kaydı oluştu.'
+                        notification_sent, notification_error = _send_fcm_push(
+                            shop,
+                            title,
+                            body,
+                            {
+                                'shop_id': str(shop.id),
+                                'device_id': str(device.id),
+                                'record_id': str(entry_record.id),
+                                'is_entry': str(entry_record.is_entry),
+                                'is_exit': str(entry_record.is_exit),
+                                'created_at': created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                            },
+                        )
+                        logging.info(
+                            'notification result for shop_id=%s record_id=%s sent=%s error=%s',
+                            shop.id,
+                            entry_record.id,
+                            notification_sent,
+                            notification_error,
+                        )
                     created_records.append(entry_record)
 
                 except (Shop.DoesNotExist, Device.DoesNotExist) as e:  # type: ignore
@@ -1134,6 +1227,76 @@ class DeviceEntryExitAPIView(APIView):
                 {"error": f"An unexpected error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ShopNotificationSettingsView(APIView):
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            shops = get_user_shops(user)
+            if not shops.exists():
+                return Response({"error": "Mağaza bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+            shop_id = request.query_params.get('shop_id')
+            if not shop_id:
+                return Response({"error": "shop_id parametresi gereklidir."}, status=status.HTTP_400_BAD_REQUEST)
+
+            shop = shops.filter(id=shop_id).first()
+            if not shop:
+                return Response({"error": "Belirtilen mağaza bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+            return Response({
+                'shop_id': shop.id,
+                'shop_name': shop.name,
+                'notification_time': shop.notification_time.strftime('%H:%M:%S') if shop.notification_time else None,
+                'notification_push_token_set': bool((shop.notification_push_token or '').strip()),
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:  # type: ignore
+            return Response({"error": "Kullanıcı bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            shops = get_user_shops(user)
+            if not shops.exists():
+                return Response({"error": "Mağaza bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+            shop_id = request.data.get('shop_id')
+            if not shop_id:
+                return Response({"error": "shop_id gereklidir."}, status=status.HTTP_400_BAD_REQUEST)
+
+            shop = shops.filter(id=shop_id).first()
+            if not shop:
+                return Response({"error": "Belirtilen mağaza bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+            notification_time_value = request.data.get('notification_time') or request.data.get('hour') or request.data.get('time')
+            try:
+                notification_time = _parse_notification_time(notification_time_value)
+            except ValueError as exc:
+                return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+            if notification_time is None:
+                return Response({"error": "notification_time gereklidir."}, status=status.HTTP_400_BAD_REQUEST)
+
+            push_token = request.data.get('push_token')
+            shop.notification_time = notification_time
+            if push_token is not None:
+                shop.notification_push_token = str(push_token).strip()
+            shop.save(update_fields=['notification_time', 'notification_push_token', 'updated_at'])
+
+            return Response({
+                'message': 'Bildirim saati kaydedildi.',
+                'shop_id': shop.id,
+                'shop_name': shop.name,
+                'notification_time': shop.notification_time.strftime('%H:%M:%S') if shop.notification_time else None,
+                'notification_push_token_set': bool((shop.notification_push_token or '').strip()),
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:  # type: ignore
+            return Response({"error": "Kullanıcı bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class GoalsAPIView(APIView):

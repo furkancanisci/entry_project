@@ -24,7 +24,7 @@ class ShopSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Shop
-        fields = ['id', 'name', 'address', 'phone', 'email', 'device_count', 'active_device_count', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'address', 'phone', 'email', 'notification_time', 'notification_push_token', 'device_count', 'active_device_count', 'created_at', 'updated_at']
 
 
 class InvitationCodeSerializer(serializers.ModelSerializer):
