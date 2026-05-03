@@ -3,7 +3,7 @@ name: Render Siteyi Uyanik Tut
 on:
   schedule:
     # Her 6 dakikada bir çalışır (Render 15 dakikada uyur)
-    - cron: '*/6 * * * *'
+    - cron: '*/3 * * * *'
   workflow_dispatch: # Manuel olarak da başlatabilmen için
 
 jobs:
@@ -12,4 +12,5 @@ jobs:
     steps:
       - name: Siteye Istek At
         run: |
-          curl -I https://entry-project.onrender.com/privacy-policy/
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 \
+            -o /dev/null https://entry-project.onrender.com/privacy-policy/
