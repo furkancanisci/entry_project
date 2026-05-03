@@ -1,0 +1,15 @@
+name: Render Siteyi Uyanik Tut
+
+on:
+  schedule:
+    # Her 6 dakikada bir çalışır (Render 15 dakikada uyur)
+    - cron: '*/6 * * * *'
+  workflow_dispatch: # Manuel olarak da başlatabilmen için
+
+jobs:
+  ping-render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Siteye Istek At
+        run: |
+          curl -I https://entry-project.onrender.com/privacy-policy/
