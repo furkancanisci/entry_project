@@ -6,8 +6,6 @@ class EntryappConfig(AppConfig):
     name = 'entryapp'
     
     def ready(self):
-        """
-        Start background scheduler when Django app is ready.
-        """
-        from entryapp.scheduler import start_scheduler
-        start_scheduler()
+        # Background fake-entry scheduler disabled.
+        # Record-created notifications still work through the normal API path.
+        return
